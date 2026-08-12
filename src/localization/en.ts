@@ -114,6 +114,49 @@ export const en = {
     'Only your ID, display name, language and usage counters are stored. Tool input content is never persisted.',
   about_credits: '👨‍💻 Built with ❤️ for developers',
 
+  // ─── 🛡️ Advanced Security (Phase 2) ─────────────────────
+  btn_security: '🛡️ Advanced Security',
+  btn_sec_apk: '📱 APK Analysis',
+  btn_sec_url: '🎣 Phishing Check',
+  btn_sec_privacy: '🔒 File Privacy',
+  btn_sec_secret: '🔑 Secret Scanner',
+  btn_sec_deps: '📦 Dependency Security',
+  btn_sec_ioc: '🕸️ IOC Correlation',
+  btn_sec_history: '📊 Scan History',
+  btn_sec_dashboard: '📈 Security Dashboard',
+  btn_sec_full: '📄 Full report',
+  btn_sec_iocs: '🕸️ Indicators',
+  btn_sec_score: '🧮 Score detail',
+
+  sec_title: '🛡️ <b>Advanced Security</b>',
+  sec_body:
+    'Security analysis tools for files and web addresses. Every report includes a risk level, evidence, a confidence figure, and actionable advice.\n\n' +
+    '⚠️ All analysis is <b>static</b>: nothing is executed. The result is an evidence-based assessment, not a verdict.',
+  sec_privacy_note:
+    '🔐 Your file is processed in memory and discarded immediately. Only a fingerprint (hash) and a summary of the result are kept in history.',
+
+  sec_apk_prompt: '📱 Send the APK as a <b>Document</b> (max {size}).',
+  sec_url_prompt: '🎣 Send the full address (including http:// or https://).',
+  sec_privacy_prompt: '🔒 Send a photo or file as a <b>Document</b> to inspect its metadata.\n<i>Note: if you send an image as a Photo, Telegram strips the metadata itself.</i>',
+  sec_secret_prompt: '🔑 Send text, a code snippet, or a config file. Actual values are never displayed.',
+  sec_deps_prompt: '📦 Send the contents of package.json, requirements.txt, go.mod, Cargo.toml or composer.json.',
+  sec_ioc_prompt: '🕸️ Send text containing IPs, domains, URLs or hashes to extract and assess them.',
+
+  sec_scanning: '🔍 Analysing… this may take a few seconds.',
+  sec_downloading: '⬇️ Downloading the file…',
+  sec_no_file: 'This tool requires you to send a file.',
+  sec_file_too_large: 'The file exceeds the allowed size ({size}).',
+  sec_download_failed: 'Could not fetch the file from Telegram. Please try again.',
+  sec_cached_result: '♻️ This file was already analysed on {date} (scan {id}).',
+  sec_scan_saved: '🗂 Scan id: <code>{id}</code>',
+
+  sec_history_title: '📊 <b>Scan History</b>',
+  sec_history_empty: 'No scans recorded yet. Start from “🛡️ Advanced Security”.',
+  sec_history_body: '<b>{count}</b> scans total — page {page} of {pages}\n<i>Raw files and input content are not stored; only a hash and a summary.</i>',
+  sec_dashboard_title: '📈 <b>Security Dashboard</b>',
+  sec_dashboard_empty: 'No data to display yet.',
+  sec_recent_findings: '🔎 <b>Recent scans</b>',
+
   err_title: '❌ <b>Operation failed.</b>',
   err_generic: 'An unexpected error occurred. Please try again later.',
   err_rate_limited: '🚦 Too many requests. Please wait {seconds} seconds.',

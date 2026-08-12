@@ -52,3 +52,11 @@ export async function consumeNetwork(kv: KVNamespace, userId: number): Promise<R
   const daily = await consume(kv, 'networkDaily', userId);
   return daily.allowed ? minute : daily;
 }
+
+/** Security scans consume the 5-minute bucket AND a daily bucket. */
+export async function consumeSecurityScan(kv: KVNamespace, userId: number): Promise<RateVerdict> {
+  const window = await consume(kv, 'securityScan', userId);
+  if (!window.allowed) return window;
+  const daily = await consume(kv, 'securityScanDaily', userId);
+  return daily.allowed ? window : daily;
+}

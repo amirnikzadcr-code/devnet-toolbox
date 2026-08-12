@@ -16,14 +16,43 @@ export interface TgChat {
   username?: string;
 }
 
+/** Uploaded file sent as a document (Security features accept these). */
+export interface TgDocument {
+  file_id: string;
+  file_unique_id: string;
+  file_name?: string;
+  mime_type?: string;
+  file_size?: number;
+}
+
+/** One size variant of a photo; Telegram sends an array, largest last. */
+export interface TgPhotoSize {
+  file_id: string;
+  file_unique_id: string;
+  width: number;
+  height: number;
+  file_size?: number;
+}
+
+/** Result of `getFile`; `file_path` is required to build the download URL. */
+export interface TgFile {
+  file_id: string;
+  file_unique_id: string;
+  file_size?: number;
+  file_path?: string;
+}
+
 export interface TgMessage {
   message_id: number;
   from?: TgUser;
   chat: TgChat;
   date: number;
   text?: string;
+  caption?: string;
   entities?: { type: string; offset: number; length: number }[];
   reply_to_message?: TgMessage;
+  document?: TgDocument;
+  photo?: TgPhotoSize[];
 }
 
 export interface TgCallbackQuery {

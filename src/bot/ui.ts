@@ -8,6 +8,7 @@ import { DIVIDER } from '../utils/text.js';
 /**
  * Callback-data grammar (Telegram hard-limits this to 64 bytes):
  *   home | tb | quick | prof | mytools | stats | set | help | about | cancel | noop
+ *   sec | sech:<page> | secd | secr:<scanType> | secv:<full|iocs|score>
  *   cat:<category>:<page>
  *   tool:<toolId>
  *   run:<toolId>
@@ -25,6 +26,8 @@ export const CB = {
   about: 'about',
   cancel: 'cancel',
   noop: 'noop',
+  /** 🛡️ Advanced Security section root (Phase 2). */
+  security: 'sec',
   category: (id: string, page = 1): string => `cat:${id}:${page}`,
   tool: (id: string): string => `tool:${id}`,
   run: (id: string): string => `run:${id}`,
@@ -48,6 +51,9 @@ export function navRow(lang: Lang, backTo?: string): InlineKeyboardButton[] {
 export function homeKeyboard(lang: Lang): InlineKeyboardMarkup {
   return kb([
     [btn(t(lang, 'btn_toolbox'), CB.toolbox), btn(t(lang, 'btn_quick'), CB.quick)],
+    // Phase 2: the security section gets a full-width row of its own — it is a
+    // distinct workflow (uploads, reports), not just another tool category.
+    [btn(t(lang, 'btn_security'), CB.security)],
     [btn(t(lang, 'btn_profile'), CB.profile), btn(t(lang, 'btn_stats'), CB.stats)],
     [btn(t(lang, 'btn_settings'), CB.settings), btn(t(lang, 'btn_help'), CB.help)],
     [btn(t(lang, 'btn_about'), CB.about)],
@@ -61,6 +67,7 @@ export function toolboxKeyboard(lang: Lang, counts: Record<string, number>): Inl
       CB.category(category.id, 1),
     ),
   ]);
+  rows.push([btn(t(lang, 'btn_security'), CB.security)]);
   rows.push([btn(t(lang, 'btn_quick'), CB.quick)]);
   rows.push(navRow(lang, CB.home));
   return kb(rows);

@@ -3,6 +3,7 @@ import type { TgCallbackQuery, TgMessage, TgUpdate, TgUser } from '../types/tele
 import type { BotContext } from './context.js';
 import type { Screen } from './screens.js';
 import type { ToolCategory } from '../tools/types.js';
+import type { ScanType } from '../security/types.js';
 import { backgroundRunner, createTelegram } from './context.js';
 import { isLang, t, type Lang } from '../localization/index.js';
 import { getTool, CATEGORIES } from '../tools/registry.js';
@@ -11,6 +12,8 @@ import * as P from './pages.js';
 import * as UI from './ui.js';
 import { runTool } from './runner.js';
 import { clearPending, getPending, isDuplicateUpdate, setPending, cacheLang, readCachedLang } from '../services/state.js';
+import * as SF from './security-flow.js';
+import { SEC } from './security-ui.js';
 import { consume } from '../services/ratelimit.js';
 import { getLang, setLang, touchUser, bumpCounter } from '../db/queries.js';
 import { logError } from '../utils/errors.js';
@@ -122,8 +125,33 @@ async function handleMessage(message: TgMessage, env: Env, waitUntil: (p: Promis
     return;
   }
 
-  // Free text → is the bot waiting for tool input?
+  // Free text or an upload → is the bot waiting for input?
   const pending = await getPending(env.STATE, user.id);
+
+  // Phase 2: a pending *security scan* is stored in the same slot with a
+  // `sec:` prefix, so uploads and text both route through one mechanism.
+  const pendingScan = pending ? SF.scanTypeFromPending(pending.toolId) : null;
+  if (pending && pendingScan) {
+    await clearPending(env.STATE, user.id);
+    await runSecurityScanFlow(ctx, pendingScan, message);
+    return;
+  }
+
+  // An upload with nothing pending: tell the user which scan to pick rather
+  // than silently ignoring a file they deliberately sent.
+  if (!pending && (message.document || message.photo)) {
+    await ctx.tg.sendMessage(
+      ctx.chatId,
+      `${SF.securityScreen(ctx).text}\n\n<i>${
+        ctx.lang === 'fa'
+          ? 'فایل دریافت شد. ابتدا نوع بررسی را از فهرست زیر انتخاب کنید، سپس فایل را دوباره بفرستید.'
+          : 'File received. Pick the type of analysis below first, then send the file again.'
+      }</i>`,
+      SF.securityScreen(ctx).keyboard,
+    );
+    return;
+  }
+
   if (pending) {
     const tool = getTool(pending.toolId);
     if (!tool) {
@@ -165,11 +193,37 @@ async function handleMessage(message: TgMessage, env: Env, waitUntil: (p: Promis
   );
 }
 
+
+/**
+ * Runs a security scan and delivers the report.
+ *
+ * The report can exceed Telegram's 4096-character limit, so the first chunk
+ * replaces the "analysing…" message and the rest follow as separate messages.
+ * A HIGH/CRITICAL verdict also gets its own alert message (requirement 14) so
+ * it cannot be missed while scrolling a long report.
+ */
+async function runSecurityScanFlow(ctx: BotContext, kind: ScanType, message: TgMessage): Promise<void> {
+  const loading = await ctx.tg.sendMessage(
+    ctx.chatId,
+    message.document ? t(ctx.lang, 'sec_downloading') : t(ctx.lang, 'sec_scanning'),
+  );
+  const loadingId = loading.result?.message_id;
+
+  const outcome = await SF.runSecurityScan(ctx, kind, message);
+
+  if (loadingId) {
+    const edited = await ctx.tg.editMessageText(ctx.chatId, loadingId, outcome.text, outcome.keyboard);
+    if (!edited.ok) await ctx.tg.sendMessage(ctx.chatId, outcome.text, outcome.keyboard);
+  } else {
+    await ctx.tg.sendMessage(ctx.chatId, outcome.text, outcome.keyboard);
+  }
+}
+
 /** Every slash command the bot answers, used to tell commands from tool input. */
 const KNOWN_COMMANDS = new Set([
   '/start', '/menu', '/home', '/tools', '/toolbox', '/quick', '/profile',
   '/stats', '/settings', '/lang', '/help', '/about', '/id', '/version',
-  '/cancel', '/tool',
+  '/cancel', '/tool', '/security', '/scan', '/scans',
 ]);
 
 /**
@@ -230,6 +284,14 @@ async function handleCommand(ctx: BotContext, text: string): Promise<void> {
       return;
     case '/version':
       await ctx.tg.sendMessage(ctx.chatId, `${APP.emoji} <b>${APP.name}</b> v${APP.version}`, UI.simpleKeyboard(ctx.lang));
+      return;
+    case '/security':
+    case '/scan':
+      await clearPending(ctx.env.STATE, ctx.user.id);
+      await send(ctx, SF.securityScreen(ctx));
+      return;
+    case '/scans':
+      await send(ctx, await SF.historyScreen(ctx, 1));
       return;
     case '/cancel':
       await clearPending(ctx.env.STATE, ctx.user.id);
@@ -330,6 +392,51 @@ async function dispatchCallback(ctx: BotContext, query: TgCallbackQuery, data: s
     return;
   }
 
+  // ── 🛡️ Advanced Security (Phase 2) ────────────────────────────────────
+  if (data === SEC.root) {
+    await clearPending(ctx.env.STATE, ctx.user.id);
+    await Promise.all([edit(ctx, SF.securityScreen(ctx)), ack()]);
+    return;
+  }
+  if (data === SEC.dashboard) {
+    await ack();
+    await edit(ctx, await SF.dashboardScreen(ctx));
+    return;
+  }
+  if (data.startsWith('sech:')) {
+    const page = Number.parseInt(data.slice(5), 10) || 1;
+    await ack();
+    await edit(ctx, await SF.historyScreen(ctx, page));
+    return;
+  }
+  if (data.startsWith('secr:')) {
+    const kind = SF.scanTypeFromPending(`sec:${data.slice(5)}`);
+    if (!kind) {
+      await ack(t(ctx.lang, 'err_unknown_action'), true);
+      return;
+    }
+    // Reuses the existing pending-input mechanism: the next message (text or
+    // upload) from this user is routed to the chosen scan.
+    await setPending(ctx.env.STATE, ctx.user.id, {
+      toolId: SF.pendingIdFor(kind),
+      messageId: ctx.messageId ?? 0,
+      chatId: ctx.chatId,
+      createdAt: Date.now(),
+    });
+    await Promise.all([edit(ctx, SF.securityPromptScreen(ctx, kind)), ack(t(ctx.lang, 'toast_loading'))]);
+    return;
+  }
+  if (data.startsWith('secv:')) {
+    const part = data.slice(5);
+    if (part !== 'full' && part !== 'iocs' && part !== 'score') {
+      await ack(t(ctx.lang, 'err_unknown_action'), true);
+      return;
+    }
+    await ack();
+    await edit(ctx, await SF.reportViewScreen(ctx, part));
+    return;
+  }
+
   if (data.startsWith('cat:')) {
     const [, id = '', pageRaw = '1'] = data.split(':');
     const page = Number.parseInt(pageRaw, 10) || 1;
@@ -411,6 +518,8 @@ export const BOT_COMMANDS = [
   { command: 'start', description: '🏠 Home / خانه' },
   { command: 'tools', description: '🧰 Toolbox / جعبه‌ابزار' },
   { command: 'quick', description: '⚡ Quick tools / ابزار سریع' },
+  { command: 'security', description: '🛡️ Advanced Security / امنیت پیشرفته' },
+  { command: 'scans', description: '📊 Scan history / تاریخچه اسکن' },
   { command: 'profile', description: '👤 Profile / پروفایل' },
   { command: 'stats', description: '📊 Statistics / آمار' },
   { command: 'settings', description: '⚙️ Settings / تنظیمات' },

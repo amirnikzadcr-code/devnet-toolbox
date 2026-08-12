@@ -53,3 +53,25 @@ CREATE TABLE IF NOT EXISTS counters (
 INSERT OR IGNORE INTO counters (key, value) VALUES ('requests', 0);
 INSERT OR IGNORE INTO counters (key, value) VALUES ('tool_runs', 0);
 INSERT OR IGNORE INTO counters (key, value) VALUES ('errors', 0);
+
+-- ─── Security scan history (Phase 2, requirement 13) ────────────────────
+-- Privacy by design: no raw file, no file name, no URL, no secret value.
+-- `target_hash` is a SHA-256 of the target (file bytes or normalised URL), so
+-- a repeat scan can be recognised without ever storing what was scanned.
+CREATE TABLE IF NOT EXISTS security_scans (
+  scan_id     TEXT    PRIMARY KEY,           -- short random id shown to the user
+  user_id     INTEGER NOT NULL,
+  scan_type   TEXT    NOT NULL CHECK (scan_type IN ('apk','url','file','secret','dependency','ioc')),
+  target_hash TEXT    NOT NULL,              -- SHA-256, never the target itself
+  target_label TEXT   NOT NULL DEFAULT '',   -- short, redacted display label
+  severity    TEXT    NOT NULL CHECK (severity IN ('safe','low','medium','high','critical')),
+  score       INTEGER NOT NULL DEFAULT 0,
+  findings    INTEGER NOT NULL DEFAULT 0,
+  high_count  INTEGER NOT NULL DEFAULT 0,    -- high + critical, for the dashboard
+  created_at  INTEGER NOT NULL,              -- unix seconds
+  FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_scans_user_date ON security_scans (user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_scans_hash ON security_scans (target_hash, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_scans_type ON security_scans (scan_type, created_at DESC);

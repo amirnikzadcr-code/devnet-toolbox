@@ -7,6 +7,12 @@ export async function digestHex(algo: WebCryptoAlgo, text: string): Promise<stri
   return bytesToHex(new Uint8Array(buffer));
 }
 
+/** Digest of raw bytes — for hashing uploaded files without a string round-trip. */
+export async function digestHexBytes(algo: WebCryptoAlgo, bytes: Uint8Array): Promise<string> {
+  const buffer = await crypto.subtle.digest(algo, bytes as unknown as BufferSource);
+  return bytesToHex(new Uint8Array(buffer));
+}
+
 export async function hmacHex(algo: WebCryptoAlgo, key: string, text: string): Promise<string> {
   const cryptoKey = await crypto.subtle.importKey(
     'raw',
@@ -25,7 +31,14 @@ export async function hmacHex(algo: WebCryptoAlgo, key: string, text: string): P
  * legacy checksum comparison, never for security decisions.
  */
 export function md5(input: string): string {
-  const bytes = utf8Bytes(input);
+  return md5Bytes(utf8Bytes(input));
+}
+
+/**
+ * MD5 over raw bytes — used by file fingerprinting, which must hash the exact
+ * uploaded binary rather than a lossy UTF-8 round-trip of it.
+ */
+export function md5Bytes(bytes: Uint8Array): string {
   const words = bytesToWords(bytes);
   const bitLength = bytes.length * 8;
 

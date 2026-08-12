@@ -1,10 +1,13 @@
-import type { InlineKeyboardMarkup, TgApiResponse, TgMessage } from '../types/telegram.js';
+import type { InlineKeyboardMarkup, TgApiResponse, TgFile, TgMessage } from '../types/telegram.js';
 import { LIMITS } from '../config/index.js';
 import { logError } from '../utils/errors.js';
 import { truncate } from '../utils/text.js';
 
 const API_BASE = 'https://api.telegram.org/bot';
+const FILE_BASE = 'https://api.telegram.org/file/bot';
 const CALL_TIMEOUT_MS = 8000;
+/** File downloads get a longer budget than API calls: payloads are larger. */
+const FILE_TIMEOUT_MS = 20_000;
 
 export class TelegramClient {
   readonly #token: string;
@@ -76,6 +79,66 @@ export class TelegramClient {
       ...(text ? { text: truncate(text, 190) } : {}),
       show_alert: showAlert,
     });
+  }
+
+  /** Resolves a `file_id` into a downloadable path. */
+  getFile(fileId: string): Promise<TgApiResponse<TgFile>> {
+    return this.call<TgFile>('getFile', { file_id: fileId });
+  }
+
+  /**
+   * Downloads an uploaded file into memory.
+   *
+   * The bot token appears in the download URL (Telegram's API design), so the
+   * URL is never logged or surfaced in an error — only the failure reason is.
+   * `maxBytes` is enforced while streaming so an oversized upload cannot
+   * exhaust the Worker's memory even when `file_size` is missing or lies.
+   */
+  async downloadFile(fileId: string, maxBytes: number): Promise<
+    { ok: true; data: Uint8Array; path: string } | { ok: false; reason: 'not_found' | 'too_large' | 'network' }
+  > {
+    const info = await this.getFile(fileId);
+    const filePath = info.result?.file_path;
+    if (!info.ok || !filePath) return { ok: false, reason: 'not_found' };
+    if ((info.result?.file_size ?? 0) > maxBytes) return { ok: false, reason: 'too_large' };
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), FILE_TIMEOUT_MS);
+    try {
+      const response = await fetch(`${FILE_BASE}${this.#token}/${filePath}`, {
+        signal: controller.signal,
+      });
+      if (!response.ok || !response.body) return { ok: false, reason: 'network' };
+
+      const reader = response.body.getReader();
+      const chunks: Uint8Array[] = [];
+      let total = 0;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = value as Uint8Array;
+        total += chunk.length;
+        if (total > maxBytes) {
+          await reader.cancel().catch(() => undefined);
+          return { ok: false, reason: 'too_large' };
+        }
+        chunks.push(chunk);
+      }
+
+      const data = new Uint8Array(total);
+      let offset = 0;
+      for (const chunk of chunks) {
+        data.set(chunk, offset);
+        offset += chunk.length;
+      }
+      return { ok: true, data, path: filePath };
+    } catch (error) {
+      // Deliberately logs no URL: it embeds the bot token.
+      logError('telegram.download', error, { fileId: fileId.slice(0, 8) });
+      return { ok: false, reason: 'network' };
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   setMyCommands(commands: { command: string; description: string }[]): Promise<TgApiResponse<boolean>> {

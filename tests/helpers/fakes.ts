@@ -167,6 +167,11 @@ export interface FakeFetchOptions {
   failMethods?: string[];
   /** Extra handler for non-Telegram (tool) requests. */
   onOther?: (url: string, init?: RequestInit) => Response | Promise<Response>;
+  /**
+   * Uploads addressable by `file_id`, so `getFile` and the download endpoint
+   * behave like the real API for the Advanced Security flows.
+   */
+  files?: Record<string, { data: Uint8Array; path?: string }>;
 }
 
 export function installFakeTelegram(options: FakeFetchOptions = {}): {
@@ -183,6 +188,15 @@ export function installFakeTelegram(options: FakeFetchOptions = {}): {
   globalThis.fetch = (async (input: unknown, init?: RequestInit): Promise<Response> => {
     const url = typeof input === 'string' ? input : String((input as { url?: string }).url ?? input);
     rawUrls.push(url);
+
+    // File downloads use a different base path than the JSON API.
+    const download = /\/file\/bot[^/]+\/(.+)$/.exec(url);
+    if (download) {
+      const wanted = download[1] ?? '';
+      const entry = Object.values(options.files ?? {}).find((file) => (file.path ?? '') === wanted);
+      if (!entry) return new Response('not found', { status: 404 });
+      return new Response(entry.data as unknown as BodyInit, { status: 200 });
+    }
 
     if (url.includes('api.telegram.org')) {
       const method = url.split('/').pop() ?? '';
@@ -202,6 +216,29 @@ export function installFakeTelegram(options: FakeFetchOptions = {}): {
           headers: { 'content-type': 'application/json' },
         });
       }
+      if (method === 'getFile') {
+        const fileId = String(body['file_id'] ?? '');
+        const entry = options.files?.[fileId];
+        if (!entry) {
+          return new Response(JSON.stringify({ ok: false, error_code: 400, description: 'file not found' }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          });
+        }
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            result: {
+              file_id: fileId,
+              file_unique_id: `${fileId}-u`,
+              file_size: entry.data.length,
+              file_path: entry.path ?? `documents/${fileId}`,
+            },
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        );
+      }
+
       const result =
         method === 'getMe'
           ? { id: 1, is_bot: true, username: 'devnet_toolbox_bot', first_name: 'DevNet' }
@@ -303,3 +340,32 @@ export function callbackUpdate(data: string, opts: { userId?: number; messageId?
     },
   } as unknown as TgUpdate;
 }
+
+/**
+ * A message carrying an uploaded document, for the Advanced Security flows.
+ * `fileId` is what `getFile`/`downloadFile` will be asked to resolve.
+ */
+export function documentUpdate(
+  document: { fileId: string; fileName?: string; mimeType?: string; fileSize?: number },
+  opts: { userId?: number; caption?: string } = {},
+): TgUpdate {
+  const userId = opts.userId ?? 555;
+  return {
+    update_id: nextUpdateId(),
+    message: {
+      message_id: 11,
+      date: Math.floor(Date.now() / 1000),
+      chat: { id: userId, type: 'private' },
+      from: { id: userId, is_bot: false, first_name: 'Test', username: 'tester', language_code: 'fa' },
+      ...(opts.caption ? { caption: opts.caption } : {}),
+      document: {
+        file_id: document.fileId,
+        file_unique_id: `${document.fileId}-u`,
+        ...(document.fileName ? { file_name: document.fileName } : {}),
+        ...(document.mimeType ? { mime_type: document.mimeType } : {}),
+        ...(document.fileSize !== undefined ? { file_size: document.fileSize } : {}),
+      },
+    },
+  } as unknown as TgUpdate;
+}
+
