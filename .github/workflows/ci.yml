@@ -1,0 +1,113 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Typecheck · Lint · Test · Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck (src and tests)
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npx vitest run tests/unit
+
+      - name: Integration tests
+        run: npx vitest run tests/integration
+
+      - name: Security tests
+        run: npx vitest run tests/security
+
+      - name: Build (dry-run bundle)
+        run: npm run build
+
+      - name: Verify the tool catalogue is in sync with the registry
+        run: |
+          npx tsx scripts/gen-tools-doc.ts
+          git diff --exit-code docs/TOOLS.md \
+            || (echo "::error::docs/TOOLS.md is stale — run 'npx tsx scripts/gen-tools-doc.ts' and commit." && exit 1)
+
+  secret-scan:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Fail on Telegram bot token patterns
+        run: |
+          if grep -rInE '\b[0-9]{8,10}:[A-Za-z0-9_-]{35}\b' \
+               --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist . ; then
+            echo "::error::A Telegram bot token pattern was found in the repository."
+            exit 1
+          fi
+          echo "No token patterns found."
+
+      - name: Fail on committed local secret files
+        run: |
+          for f in .dev.vars .env .env.local; do
+            if git ls-files --error-unmatch "$f" > /dev/null 2>&1; then
+              echo "::error::$f is committed — it must stay git-ignored."
+              exit 1
+            fi
+          done
+          echo "No local secret files are tracked."
+
+  deploy:
+    name: Deploy to Cloudflare Workers
+    needs: [verify, secret-scan]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

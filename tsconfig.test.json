@@ -1,0 +1,11 @@
+{
+  // Tests may use Node built-ins (fs/path) that the Worker runtime does not have,
+  // so they are type-checked separately from src/ to keep the runtime types honest.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["@cloudflare/workers-types", "node"],
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
+  },
+  "include": ["src/**/*.ts", "tests/**/*.ts", "*.ts"]
+}

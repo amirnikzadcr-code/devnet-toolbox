@@ -1,0 +1,42 @@
+{
+  "name": "devnet-toolbox",
+  "version": "1.0.0",
+  "private": true,
+  "description": "DevNet Toolbox — a production-ready Telegram bot on Cloudflare Workers offering programming, network, security and utility tools.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "wrangler dev",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
+    "lint": "eslint . --max-warnings=0",
+    "lint:fix": "eslint . --fix",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "build": "wrangler deploy --dry-run --outdir=dist",
+    "deploy": "wrangler deploy",
+    "db:init:local": "wrangler d1 execute devnet_toolbox --local --file=./src/db/schema.sql",
+    "db:init:remote": "wrangler d1 execute devnet_toolbox --remote --file=./src/db/schema.sql",
+    "verify": "npm run typecheck && npm run lint && npm run test && npm run build"
+  },
+  "keywords": [
+    "telegram",
+    "bot",
+    "cloudflare",
+    "workers",
+    "typescript",
+    "developer-tools"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250109.0",
+    "@eslint/js": "^9.18.0",
+    "@types/node": "^22.20.1",
+    "eslint": "^9.18.0",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.20.0",
+    "vitest": "^2.1.8",
+    "wrangler": "^3.101.0"
+  }
+}
