@@ -5,22 +5,41 @@ import { parseHostInput, assertPublicHost } from '../../utils/validate.js';
 import { STATE_TTL } from '../../config/index.js';
 import { errNetwork } from '../../utils/errors.js';
 
+/** certspotter returns `issuer` as an object; older/other shapes use a plain string. */
+type CertSpotterIssuer = string | { name?: string; friendly_name?: string } | null;
+
 interface CertSpotterIssuance {
   id?: string;
   tbs_sha256?: string;
   dns_names?: string[];
   pubkey_sha256?: string;
-  issuer?: string;
+  issuer?: CertSpotterIssuer;
   not_before?: string;
   not_after?: string;
   revoked?: boolean;
 }
 
-function issuerCommonName(issuer: string | undefined): string {
+/**
+ * Extract a human-readable issuer name.
+ *
+ * The certspotter API answers with `issuer: { name: "C=US, O=…, CN=WE1",
+ * friendly_name: "Google Trust Services" }`, not a bare string. Assuming a
+ * string here crashed the tool with "…trim is not a function" for every domain.
+ * Both shapes are accepted, and anything unexpected degrades to an em dash.
+ */
+function issuerCommonName(issuer: CertSpotterIssuer | undefined): string {
   if (!issuer) return '—';
+
+  if (typeof issuer === 'object') {
+    const friendly = typeof issuer.friendly_name === 'string' ? issuer.friendly_name.trim() : '';
+    if (friendly) return friendly;
+    return issuerCommonName(typeof issuer.name === 'string' ? issuer.name : undefined);
+  }
+
+  if (typeof issuer !== 'string') return '—';
   const cn = /CN=([^,]+)/.exec(issuer)?.[1];
   const o = /O=([^,]+)/.exec(issuer)?.[1];
-  return (cn ?? o ?? issuer).trim();
+  return (cn ?? o ?? issuer).trim() || '—';
 }
 
 function daysBetween(from: number, to: number): number {

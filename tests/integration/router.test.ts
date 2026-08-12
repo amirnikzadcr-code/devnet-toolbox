@@ -308,3 +308,49 @@ describe('every tool is reachable and renders a detail page', () => {
     for (const tool of ALL_TOOLS) expect(getTool(tool.id), tool.id).toBeDefined();
   });
 });
+
+describe('slash-like tool input (regression: input starting with "/")', () => {
+  it('feeds a regex literal to the pending tool instead of rejecting it as a command', async () => {
+    await run(callbackUpdate('run:regex_test'));
+    expect(kv().keys().some((k) => k.includes('pending'))).toBe(true);
+
+    await run(messageUpdate('/\\d{3}-\\d{4}/g\ncall 555-1234'));
+
+    const texts = tg.sentTexts().concat(
+      tg.calls
+        .filter((c) => c.method === 'editMessageText')
+        .map((c) => (c.body['text'] as string) ?? ''),
+    );
+    const joined = texts.join('\n');
+    expect(joined).not.toContain('معتبر نیست');
+    expect(joined).toContain('555-1234');
+    expect(kv().keys().some((k) => k.includes('pending'))).toBe(false);
+  });
+
+  it('passes a unix-style path through to the pending tool', async () => {
+    await run(callbackUpdate('run:base64_encode'));
+    await run(messageUpdate('/etc/hosts'));
+    const joined = tg.calls
+      .filter((c) => c.method === 'editMessageText')
+      .map((c) => (c.body['text'] as string) ?? '')
+      .join('\n');
+    // base64("/etc/hosts")
+    expect(joined).toContain('L2V0Yy9ob3N0cw==');
+  });
+
+  it('still routes genuine commands while a tool is pending', async () => {
+    await run(callbackUpdate('run:base64_encode'));
+    await run(messageUpdate('/cancel'));
+    expect(kv().keys().some((k) => k.includes('pending'))).toBe(false);
+  });
+
+  it('still reports unknown slash commands when nothing is pending', async () => {
+    await run(messageUpdate('/definitelynotacommand'));
+    expect(tg.sentTexts().join('\n')).toContain('معتبر نیست');
+  });
+
+  it('treats /start@BotName as a command', async () => {
+    await run(messageUpdate('/start@Toolsbotxbot'));
+    expect(tg.sentTexts()[0] ?? '').toContain('DevNet');
+  });
+});

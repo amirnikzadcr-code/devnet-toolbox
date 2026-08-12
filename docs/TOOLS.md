@@ -347,7 +347,7 @@ input : (no input required)
 output: undefined
 ```
 
-**Limitations.** Data comes from the public ipwho.is service and may be approximate. Private IPs are rejected. Results are cached for 5 minutes.
+**Limitations.** Data comes from the public ipwho.is service, falling back to ip-api.com when it is unavailable, and may be approximate. Private IPs are rejected. Results are cached for 5 minutes.
 
 ### `http_status` — HTTP Status Checker ⚡ 🌐 ⌨️
 

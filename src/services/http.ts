@@ -102,21 +102,31 @@ export async function fetchJson<T>(url: string, options: SafeFetchOptions = {}):
   }
 }
 
-/** Small KV-backed cache wrapper for network answers. */
+/**
+ * Small KV-backed cache wrapper for network answers.
+ *
+ * `shouldCache` guards against poisoning the cache with upstream failures: some
+ * public APIs answer with HTTP 200 and a body such as
+ * `{ "success": false, "message": "Rate limit exceeded" }`. Caching that reply
+ * would keep every user broken for the whole TTL, so callers pass a predicate
+ * that only accepts genuinely useful payloads.
+ */
 export async function cached<T>(
   kv: KVNamespace | undefined,
   key: string,
   ttlSec: number,
   producer: () => Promise<T>,
+  shouldCache: (value: T) => boolean = () => true,
 ): Promise<T> {
   if (!kv) return producer();
   try {
     const hit = await kv.get(key, 'json');
-    if (hit !== null) return hit as T;
+    if (hit !== null && shouldCache(hit as T)) return hit as T;
   } catch {
     /* cache miss on error — fall through */
   }
   const value = await producer();
+  if (!shouldCache(value)) return value;
   try {
     await kv.put(key, JSON.stringify(value), { expirationTtl: Math.max(60, ttlSec) });
   } catch {

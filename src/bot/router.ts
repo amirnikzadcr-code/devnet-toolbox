@@ -113,7 +113,11 @@ async function handleMessage(message: TgMessage, env: Env, waitUntil: (p: Promis
 
   const text = (message.text ?? '').trim();
 
-  if (text.startsWith('/')) {
+  // Only treat a message as a command when it really is one. Plenty of tool
+  // inputs legitimately start with "/" — regex literals like /\d{3}/g, unix
+  // paths, JSON pointers — and those must reach the pending tool instead of
+  // being rejected as an unknown command.
+  if (isKnownCommand(text)) {
     await handleCommand(ctx, text);
     return;
   }
@@ -139,6 +143,17 @@ async function handleMessage(message: TgMessage, env: Env, waitUntil: (p: Promis
     return;
   }
 
+  // Nothing pending. An unrecognised slash command deserves a clear answer;
+  // anything else gets the home page with a hint.
+  if (/^\/[A-Za-z0-9_]+(@[A-Za-z0-9_]+)?(\s|$)/.test(text)) {
+    await ctx.tg.sendMessage(
+      ctx.chatId,
+      P.errorPage(ctx.lang, t(ctx.lang, 'err_unknown_action')),
+      UI.homeKeyboard(ctx.lang),
+    );
+    return;
+  }
+
   await ctx.tg.sendMessage(
     ctx.chatId,
     `${P.homePage(ctx.lang)}\n\n<i>${
@@ -148,6 +163,24 @@ async function handleMessage(message: TgMessage, env: Env, waitUntil: (p: Promis
     }</i>`,
     UI.homeKeyboard(ctx.lang),
   );
+}
+
+/** Every slash command the bot answers, used to tell commands from tool input. */
+const KNOWN_COMMANDS = new Set([
+  '/start', '/menu', '/home', '/tools', '/toolbox', '/quick', '/profile',
+  '/stats', '/settings', '/lang', '/help', '/about', '/id', '/version',
+  '/cancel', '/tool',
+]);
+
+/**
+ * True only for real bot commands: a leading slash, then a valid Telegram
+ * command name (letters, digits, underscore, optional @botname), ending at a
+ * space or end of string. `/\d{3}-\d{4}/g` and `/etc/hosts` are not commands.
+ */
+function isKnownCommand(text: string): boolean {
+  const match = /^\/([A-Za-z0-9_]+)(@[A-Za-z0-9_]+)?(?:\s|$)/.exec(text);
+  if (!match) return false;
+  return KNOWN_COMMANDS.has(`/${(match[1] ?? '').toLowerCase()}`);
 }
 
 async function handleCommand(ctx: BotContext, text: string): Promise<void> {

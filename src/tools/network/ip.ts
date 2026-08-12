@@ -22,6 +22,80 @@ interface IpWhoResponse {
   flag?: { emoji?: string };
 }
 
+/** Shape returned by the ip-api.com fallback provider. */
+interface IpApiResponse {
+  status?: string;
+  message?: string;
+  query?: string;
+  country?: string;
+  countryCode?: string;
+  regionName?: string;
+  city?: string;
+  lat?: number;
+  lon?: number;
+  timezone?: string;
+  isp?: string;
+  org?: string;
+  as?: string;
+}
+
+/** Turns a two-letter country code into its flag emoji (🇺🇸 from "US"). */
+function flagOf(code: string | undefined): string {
+  if (!code || code.length !== 2) return '🏳️';
+  const base = 0x1f1e6;
+  const upper = code.toUpperCase();
+  return String.fromCodePoint(
+    base + (upper.charCodeAt(0) - 65),
+    base + (upper.charCodeAt(1) - 65),
+  );
+}
+
+/** Normalises an ip-api.com answer into the shape the renderer expects. */
+function fromIpApi(payload: IpApiResponse): IpWhoResponse {
+  if (payload.status !== 'success') return { success: false };
+  // `as` looks like "AS15169 Google LLC" — split the number from the name.
+  const asMatch = /^AS(\d+)\s*(.*)$/.exec(payload.as ?? '');
+  return {
+    success: true,
+    ip: payload.query,
+    type: (payload.query ?? '').includes(':') ? 'IPv6' : 'IPv4',
+    country: payload.country,
+    country_code: payload.countryCode,
+    region: payload.regionName,
+    city: payload.city,
+    latitude: payload.lat,
+    longitude: payload.lon,
+    timezone: { id: payload.timezone },
+    connection: {
+      asn: asMatch ? Number(asMatch[1]) : undefined,
+      org: asMatch?.[2] || payload.org,
+      isp: payload.isp,
+    },
+    flag: { emoji: flagOf(payload.countryCode) },
+  };
+}
+
+/**
+ * Look an IP up, trying providers in order.
+ *
+ * Cloudflare Workers share outbound IPs across the whole platform, so the free
+ * tier of a single geolocation API is regularly exhausted by other tenants —
+ * ipwho.is answers 429 for us even on the very first call of the day. Falling
+ * back to a second provider keeps the tool usable instead of dead.
+ */
+async function lookupIp(ip: string): Promise<IpWhoResponse> {
+  try {
+    const { data } = await fetchJson<IpWhoResponse>(`https://ipwho.is/${encodeURIComponent(ip)}`);
+    if (data.success !== false) return data;
+  } catch {
+    /* provider unavailable — try the next one */
+  }
+  const { data } = await fetchJson<IpApiResponse>(
+    `http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,message,query,country,countryCode,regionName,city,lat,lon,timezone,isp,org,as`,
+  );
+  return fromIpApi(data);
+}
+
 export const ipInfoTool = defineTool({
   id: 'ip_info',
   category: 'network',
@@ -43,8 +117,8 @@ export const ipInfoTool = defineTool({
     en: 'Input: 1.1.1.1\nOutput: 🇦🇺 Australia • AS13335 Cloudflare',
   },
   limitations: {
-    fa: 'داده‌ها از سرویس عمومی ipwho.is گرفته می‌شود و ممکن است دقیق نباشد. IPهای خصوصی مجاز نیستند. نتایج ۵ دقیقه کش می‌شوند.',
-    en: 'Data comes from the public ipwho.is service and may be approximate. Private IPs are rejected. Results are cached for 5 minutes.',
+    fa: 'داده‌ها از سرویس‌های عمومی ipwho.is و در صورت در دسترس نبودن، ip-api.com گرفته می‌شود و ممکن است دقیق نباشد. IPهای خصوصی مجاز نیستند. نتایج ۵ دقیقه کش می‌شوند.',
+    en: 'Data comes from the public ipwho.is service, falling back to ip-api.com when it is unavailable, and may be approximate. Private IPs are rejected. Results are cached for 5 minutes.',
   },
   run: async (input, ctx) => {
     const fa = ctx.lang === 'fa';
@@ -64,10 +138,15 @@ export const ipInfoTool = defineTool({
       resolvedFrom = host;
     }
 
-    const data = await cached(ctx.cache, `ipinfo:${ip}`, STATE_TTL.networkCacheSec, async () => {
-      const { data: payload } = await fetchJson<IpWhoResponse>(`https://ipwho.is/${encodeURIComponent(ip)}`);
-      return payload;
-    });
+    const data = await cached(
+      ctx.cache,
+      `ipinfo:${ip}`,
+      STATE_TTL.networkCacheSec,
+      async () => lookupIp(ip),
+      // Providers answer HTTP 200 with `success:false` when they rate-limit us.
+      // Never cache that, otherwise one throttled call breaks the tool for the whole TTL.
+      (payload) => payload.success !== false,
+    );
 
     if (data.success === false) {
       throw errNetwork(

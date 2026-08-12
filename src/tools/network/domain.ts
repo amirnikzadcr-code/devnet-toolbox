@@ -1,5 +1,5 @@
 import { defineTool } from '../types.js';
-import { DIVIDER, escapeHtml, isoUtc, mono } from '../../utils/text.js';
+import { DIVIDER, escapeHtml, isoUtc, mono, asString } from '../../utils/text.js';
 import { cached, fetchJson } from '../../services/http.js';
 import { assertPublicHost, isIP, parseHostInput } from '../../utils/validate.js';
 import { STATE_TTL } from '../../config/index.js';
@@ -89,14 +89,21 @@ export const domainInfoTool = defineTool({
     }
     const registrable = labels.slice(-2).join('.');
 
-    const rdap = await cached(ctx.cache, `rdap:${registrable}`, STATE_TTL.networkCacheSec, async () => {
-      try {
-        const { data } = await fetchJson<RdapResponse>(`https://rdap.org/domain/${encodeURIComponent(registrable)}`);
-        return data;
-      } catch {
-        return { errorCode: 404 } as RdapResponse;
-      }
-    });
+    const rdap = await cached(
+      ctx.cache,
+      `rdap:${registrable}`,
+      STATE_TTL.networkCacheSec,
+      async () => {
+        try {
+          const { data } = await fetchJson<RdapResponse>(`https://rdap.org/domain/${encodeURIComponent(registrable)}`);
+          return data;
+        } catch {
+          return { errorCode: 404 } as RdapResponse;
+        }
+      },
+      // A lookup failure is transient — keep it out of the cache so the next try is fresh.
+      (data) => data.errorCode === undefined,
+    );
 
     const [ns, mx] = await Promise.all([
       dnsQuery(host, 'NS', ctx.cache).catch(() => null),
@@ -109,15 +116,16 @@ export const domainInfoTool = defineTool({
     const registrar = entityName(rdap.entities?.find((e) => e.roles?.includes('registrar'))) ?? null;
     const ageDays = created ? Math.floor((Date.now() - created) / 86_400_000) : null;
     const expiresIn = expires ? Math.round((expires - Date.now()) / 86_400_000) : null;
-    const statuses = (rdap.status ?? []).slice(0, 5);
+    const statuses = (rdap.status ?? []).map((s) => asString(s)).filter(Boolean).slice(0, 5);
     const nsList = (rdap.nameservers ?? [])
       .map((n) => n.ldhName)
       .filter((n): n is string => Boolean(n))
-      .concat((ns?.Answer ?? []).filter((a) => a.type === 2).map((a) => a.data.replace(/\.$/, '')));
+      .concat((ns?.Answer ?? []).filter((a) => a.type === 2).map((a) => asString(a.data).replace(/\.$/, '')));
     const uniqueNs = [...new Set(nsList.map((n) => n.toLowerCase()))].slice(0, 8);
     const mxList = (mx?.Answer ?? [])
       .filter((a) => a.type === 15)
-      .map((a) => a.data)
+      .map((a) => asString(a.data))
+      .filter(Boolean)
       .slice(0, 5);
 
     const hasRdap = !rdap.errorCode && (created || registrar || rdap.handle);

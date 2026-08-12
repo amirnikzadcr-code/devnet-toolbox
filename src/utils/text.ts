@@ -61,3 +61,17 @@ export function formatBytes(bytes: number): string {
 export function isoUtc(ms: number): string {
   return new Date(ms).toISOString().replace('T', ' ').replace(/\.\d+Z$/, ' UTC');
 }
+
+/**
+ * Coerce an untrusted JSON field to a string.
+ *
+ * Upstream APIs change shape without notice — certspotter's `issuer` turned
+ * from a string into an object, which crashed a tool in production. Any field
+ * read from a third-party response should pass through here before string
+ * methods are called on it.
+ */
+export function asString(value: unknown, fallback = ''): string {
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  return fallback;
+}

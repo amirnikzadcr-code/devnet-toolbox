@@ -1,5 +1,5 @@
 import { defineTool } from '../types.js';
-import { DIVIDER, escapeHtml, mono } from '../../utils/text.js';
+import { DIVIDER, escapeHtml, mono, asString } from '../../utils/text.js';
 import { cached, fetchJson } from '../../services/http.js';
 import { isIPv4, isIPv6, parseHostInput } from '../../utils/validate.js';
 import { errInvalidInput, errNetwork } from '../../utils/errors.js';
@@ -40,12 +40,20 @@ export async function dnsQuery(
   kv?: KVNamespace,
 ): Promise<DohResponse> {
   const url = `${DOH_ENDPOINT}?name=${encodeURIComponent(name)}&type=${encodeURIComponent(type)}`;
-  return cached(kv, `dns:${type}:${name}`, STATE_TTL.networkCacheSec, async () => {
-    const { data } = await fetchJson<DohResponse>(url, {
-      headers: { accept: 'application/dns-json' },
-    });
-    return data;
-  });
+  return cached(
+    kv,
+    `dns:${type}:${name}`,
+    STATE_TTL.networkCacheSec,
+    async () => {
+      const { data } = await fetchJson<DohResponse>(url, {
+        headers: { accept: 'application/dns-json' },
+      });
+      return data;
+    },
+    // DoH Status 0 = NOERROR. Server failures (2 = SERVFAIL) are transient, so
+    // only successful resolutions are worth keeping.
+    (data) => data.Status === 0,
+  );
 }
 
 const SUPPORTED_TYPES = ['A', 'AAAA', 'MX', 'TXT', 'NS', 'CNAME', 'SOA', 'CAA', 'SRV'];
@@ -102,7 +110,7 @@ export const dnsLookup = defineTool({
       .slice(0, 25)
       .map((a) => {
         const typeName = DNS_TYPE_NAMES[a.type] ?? String(a.type);
-        return `• <b>${typeName}</b> ${escapeHtml(a.data.slice(0, 200))}\n  ↳ TTL ${a.TTL}s`;
+        return `• <b>${typeName}</b> ${escapeHtml(asString(a.data).slice(0, 200))}\n  ↳ TTL ${a.TTL}s`;
       })
       .join('\n');
     return {
