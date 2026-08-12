@@ -46,7 +46,9 @@ Only what is needed to render a profile and usage statistics:
 - First-seen and last-activity timestamps
 - Request count, tool-run count, per-tool counters, daily aggregates
 
-**Never stored:** tool input, tool output, message text, chat contents, IP addresses.
+**Never stored:** tool input, tool output, message text, chat contents, IP addresses, uploaded files.
+
+Uploaded files (`image_metadata`, `file_hash_compare`) are read into memory, processed and dropped when the request ends. The two-file hash comparison keeps only the first file's three hashes and its declared name and size in KV, for at most 15 minutes — never the bytes.
 
 Because inputs are not persisted, pasting a JWT or a hash into the bot leaves no copy behind — it lives only in Telegram's own chat history.
 
@@ -78,6 +80,39 @@ All values live in `src/config/index.ts`. Limits fail **open** if KV is unavaila
 11. The no-offensive-tooling policy, checked against the registry
 12. JWT tooling advertising decode-only, and MD5/SHA-1 carrying deprecation warnings
 13. End-to-end webhook hardening, including that missing and wrong secrets are indistinguishable
+
+`tests/security/http-builder.test.ts` (53 tests) covers the HTTP Request Builder specifically:
+
+- public URLs succeed, with status, timing, headers and body reported
+- 20 classes of internal target are refused **before any socket is opened**:
+  localhost, all loopback forms, IPv6 `::1`, RFC 1918 ranges, link-local,
+  CGNAT, `0.0.0.0`, AWS/GCP/Alibaba/ECS metadata endpoints, `.internal`,
+  `.local`, `.consul`, unique-local IPv6, and decimal- or hex-encoded IP
+  literals
+- redirects to an internal target are refused on hop 2 and hop 3, proving the
+  per-hop revalidation in `security/ssrf.ts` and not merely the initial check
+- non-http schemes, URL userinfo and non-web ports are rejected
+- `Host`, `X-Forwarded-For`, `CF-Connecting-IP`, `Cookie` and `Content-Length`
+  cannot be set; a carriage return anywhere in the request spec is refused
+- `Authorization` and `Set-Cookie` values are redacted from the transcript
+- request bodies over 8 KB, responses over 32 KB, and timeouts are all bounded,
+  and neither a timeout nor a connection failure leaks internal detail
+
+## Tool-specific hardening (Phase 3)
+
+| Tool | Risk | Mitigation |
+|---|---|---|
+| `http_request` | SSRF, port scanning, header spoofing | `assertSafeUrl` per redirect hop, port allow-list narrower than the port-checker's, header deny-list, CR rejection, 8 s timeout, byte caps, 8/min + 120/day budget |
+| `xml_format` | XXE, billion laughs | DOCTYPE with an internal subset is rejected; no entity is ever expanded; depth capped at 100 |
+| `yaml_json` | Parser abuse | Anchors/aliases, custom tags, multi-document files and tab indentation are refused; 2 000-line and 8 000-character caps |
+| `regex_helper` | ReDoS | Nested quantifiers, alternation inside a repeated group and consecutive `.*` are refused before compilation; pattern 300 chars, subject 4 000 chars, 50 matches |
+| `diff_check` | CPU exhaustion | 6 000 chars per side, 1 200 lines total; the LCS degrades to a block diff above 4 M cells |
+| `csv_json` | Memory exhaustion | 2 000 rows, 60 columns, 8 000 characters |
+| `dedupe_lines` | Memory exhaustion | 3 000 lines |
+| `prog_calc` / `base_convert` | Unbounded BigInt | 128-bit ceiling, shift amount bounded by the word width |
+| `image_metadata`, `file_hash_compare` | Malicious uploads | 8 MB cap enforced on the declared size *and* while streaming; static parsing only; bytes never persisted |
+| `docker_helper`, `readme_gen`, `gitignore_gen` | Credential leakage in generated files | Compose templates reference `${VAR:?}` and never a literal password; databases bind to 127.0.0.1; the README writes variable names only; `.gitignore` always includes a secrets section |
+| `git_helper` | Data loss from a suggested command | Every destructive command carries a warning, `--force-with-lease` is preferred over `--force`, and a leaked secret is answered with "revoke first"
 
 ## Reporting a vulnerability
 

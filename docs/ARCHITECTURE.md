@@ -23,7 +23,7 @@ The bot is one Cloudflare Worker with no origin server behind it. Telegram deliv
 | Routing | `src/bot/router.ts` | Update dispatch, dedupe, guards, language resolution |
 | Execution | `src/bot/runner.ts` | Rate limits, input validation, tool invocation, output truncation, usage recording |
 | Presentation | `src/bot/{screens,pages,ui}.ts` | Screen composition, page bodies, inline keyboards |
-| Domain | `src/tools/**` | The 45 tools plus the registry |
+| Domain | `src/tools/**` | The 65 tools plus the registry |
 | Services | `src/services/**` | Telegram client, safe outbound fetch, KV state, rate limiting |
 | Persistence | `src/db/**` | D1 schema and parameterised queries |
 | Cross-cutting | `src/utils/**`, `src/config/**`, `src/localization/**` | Helpers, tunables, translations |

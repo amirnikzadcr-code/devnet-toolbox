@@ -68,7 +68,7 @@ curl https://devnet-toolbox.<subdomain>.workers.dev/health
 ```
 
 ```json
-{"ok":true,"name":"DevNet Toolbox","version":"1.0.0","tools":45,"environment":"production"}
+{"ok":true,"name":"DevNet Toolbox","version":"1.0.0","tools":65,"environment":"production"}
 ```
 
 ## 7. Register the webhook

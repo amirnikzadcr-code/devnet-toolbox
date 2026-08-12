@@ -2,7 +2,7 @@
 
 # 💻 DevNet Toolbox
 
-**A production-grade Telegram bot with 45 developer, network, security and utility tools — running entirely on Cloudflare Workers.**
+**A production-grade Telegram bot with 65 developer, network, security and utility tools — running entirely on Cloudflare Workers.**
 
 Persian-first UI with full English support · Webhook-only · Zero heavy dependencies
 
@@ -82,10 +82,10 @@ Per-user rate limits (general / tool / network), a hard daily cap on network too
 
 ## 🧰 Tool catalogue
 
-**45 tools across 5 categories.** `⚡` marks tools that also appear under Quick Tools.
+**65 tools across 4 categories** plus the 🛡️ Advanced Security section. `⚡` marks tools that also appear under Quick Tools, `📎` tools that take a file upload.
 
 <details open>
-<summary><b>💻 Programming (16)</b></summary>
+<summary><b>💻 Programming (26)</b></summary>
 
 | ID | Tool | Input |
 |---|---|---|
@@ -105,11 +105,21 @@ Per-user rate limits (general / tool / network), a hard daily cap on network too
 | `markdown_html` | Markdown → HTML | text |
 | `text_stats` | Text Statistics | text |
 | `random_string` | Random String Generator | — |
+| `yaml_json` ⚡ | YAML ↔ JSON Converter (validate / format / minify) | text |
+| `xml_format` | XML Formatter & Validator (XXE-safe) | text |
+| `base_convert` ⚡ | Number Base Converter (bin/oct/dec/hex) | text |
+| `prog_calc` | Programmer Calculator (AND/OR/XOR/NOT/SHL/SHR/MOD) | expression |
+| `diff_check` ⚡ | Diff Checker with statistics | two texts |
+| `regex_helper` ⚡ | Regex Generator & Explainer | pattern or description |
+| `docker_helper` | Dockerfile & docker-compose generator | language / services |
+| `git_helper` | Git error diagnosis with safety warnings | error text |
+| `gitignore_gen` | .gitignore Generator (14 stacks) | stack names |
+| `readme_gen` | README Generator | `key: value` spec |
 
 </details>
 
 <details open>
-<summary><b>🌐 Network (11)</b></summary>
+<summary><b>🌐 Network (12)</b></summary>
 
 | ID | Tool | Notes |
 |---|---|---|
@@ -124,13 +134,14 @@ Per-user rate limits (general / tool / network), a hard daily cap on network too
 | `port_check` | Port Check | **allow-list of common ports only** |
 | `ping` ⚡ | Connectivity Test | 3 HTTPS probes |
 | `my_ip` | My Connection | no outbound request |
+| `http_request` | **HTTP Request Builder** (GET/POST/PUT/PATCH/DELETE/HEAD) | SSRF-checked on every redirect hop, port allow-list, 8 KB body / 32 KB response caps |
 
 > Network tools are deliberately rate-limited (8/min, 120/day per user) and reject private, loopback and link-local targets. Port ranges, comma lists and CIDR notation are rejected — this is a diagnostic aid, not a scanner.
 
 </details>
 
 <details open>
-<summary><b>🔐 Security (8)</b></summary>
+<summary><b>🔐 Security (9)</b></summary>
 
 | ID | Tool |
 |---|---|
@@ -142,13 +153,14 @@ Per-user rate limits (general / tool / network), a hard daily cap on network too
 | `password_gen` ⚡ | Password Generator with strength meter |
 | `secret_gen` | Secure Secret / Token Generator |
 | `hmac_gen` | HMAC Generator |
+| `file_hash_compare` 📎 | File Hash Comparison (MD5 / SHA-1 / SHA-256 of two uploads) |
 
 All generators use `crypto.getRandomValues` — never `Math.random`.
 
 </details>
 
 <details open>
-<summary><b>🛠 Utilities (10)</b></summary>
+<summary><b>🛠 Utilities (18)</b></summary>
 
 | ID | Tool |
 |---|---|
@@ -162,8 +174,20 @@ All generators use `crypto.getRandomValues` — never `Math.random`.
 | `url_parse` | URL Parser |
 | `url_normalize` | URL Cleaner / Normalizer |
 | `cron_helper` | Cron Expression Helper |
+| `datetime_convert` ⚡ | Date & Time Converter (10/13-digit epoch detection, ISO 8601) |
+| `timezone_convert` | Timezone Converter (IANA zones, DST-aware) |
+| `text_transform` ⚡ | Text Transformer (9 naming conventions + whitespace ops) |
+| `dedupe_lines` | Duplicate Line Remover |
+| `csv_json` | CSV ↔ JSON Converter (RFC 4180, header detection) |
+| `image_metadata` 📎 | Image Metadata Inspector (EXIF, GPS, privacy warning) |
+| `url_parse_pro` ⚡ | Advanced URL Parser (subdomain / domain / TLD, encode/decode) |
+| `cron_builder` ⚡ | Cron Generator & Explainer (next runs per timezone) |
 
 </details>
+
+> Tools marked 📎 read an uploaded document. The file is processed in memory and discarded immediately — only derived values (hashes, dimensions, metadata) are ever shown, and nothing is written to storage.
+
+> Output longer than a Telegram message is delivered as a single attachment (`.txt`, `.json`, `.md`, `Dockerfile`, …) rather than a burst of consecutive messages.
 
 ---
 
@@ -190,7 +214,7 @@ All generators use `crypto.getRandomValues` — never `Math.random`.
       └───────────┘         │
                             ▼
                    ┌──────────────────┐
-                   │  Tool Registry   │  45 tools, 5 categories
+                   │  Tool Registry   │  65 tools, 4 categories
                    └───┬──────────┬───┘
                        │          │
               ┌────────▼───┐  ┌───▼─────────┐
@@ -276,7 +300,7 @@ Smoke-test the running Worker:
 
 ```bash
 curl http://localhost:8787/health
-# {"ok":true,"name":"DevNet Toolbox","version":"1.0.0","tools":45,...}
+# {"ok":true,"name":"DevNet Toolbox","version":"1.0.0","tools":65,...}
 ```
 
 To receive real Telegram traffic locally, expose port 8787 with a tunnel (e.g. `cloudflared tunnel --url http://localhost:8787`) and point the webhook at the tunnel URL.
@@ -298,7 +322,7 @@ npm run verify                 # typecheck → lint → test → build
 | Suite | Tests | Covers |
 |---|---:|---|
 | `tests/unit/` | 178 | JSON, Base64/URL encoding, hashing, JWT, UUID/random, validators, registry, localisation, formatters, calculator & converters |
-| `tests/integration/router.test.ts` | 59 | `/start`, all 14 commands, callback navigation, pagination + clamping, the full tool-execution flow, `/cancel`, language switching, update dedupe, group-chat rejection, D1 outage fallback, `editMessageText` → `sendMessage` fallback, and rendering the page of **all 45 tools** |
+| `tests/integration/router.test.ts` | 59 | `/start`, all 14 commands, callback navigation, pagination + clamping, the full tool-execution flow, `/cancel`, language switching, update dedupe, group-chat rejection, D1 outage fallback, `editMessageText` → `sendMessage` fallback, and rendering the page of **all 65 tools** |
 | `tests/integration/worker.test.ts` | 26 | Health endpoint, webhook auth (missing / wrong / prefix / empty secret), malformed JSON, missing `update_id`, 413 oversized body, admin-endpoint authorisation |
 | `tests/security/security.test.ts` | 28 | Source-tree secret scanning, runtime leakage, escaped output, SSRF rejection, SQL-injection resistance, rate-limit enforcement, port allow-list, no-exploit policy, webhook hardening |
 
