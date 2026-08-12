@@ -237,6 +237,17 @@ describe('Report building', () => {
     expect(report.severity).toBe('high');
   });
 
+  it('never reports SAFE while a finding exists', () => {
+    // A short list of minor findings scores below the LOW band, but rendering
+    // 🟢 SAFE directly above a list of findings contradicts itself.
+    const report = buildReport({
+      ...base,
+      scanType: 'ioc',
+      findings: [finding({ id: 'ioc.risky', severity: 'low', confidence: 40 })],
+    });
+    expect(report.severity).toBe('low');
+  });
+
   it('reports safe when there are no findings', () => {
     const report = buildReport({ ...base, findings: [] });
     expect(report.severity).toBe('safe');

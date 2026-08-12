@@ -332,7 +332,11 @@ export async function scanIocs(text: string): Promise<ScanOutcome> {
   }
 
   const findings: Finding[] = [];
-  const risky = iocs.filter((ioc) => severityRank(ioc.severity) >= severityRank('medium'));
+  // Threshold is `low`, not `medium`: abusive TLDs and hard-coded IPs are
+  // rated low individually, and requiring medium meant a report could list
+  // 🟡 indicators while announcing an overall 🟢 SAFE verdict — a
+  // contradiction that undermines the whole report.
+  const risky = iocs.filter((ioc) => severityRank(ioc.severity) >= severityRank('low'));
   if (risky.length > 0) {
     findings.push({
       id: 'ioc.risky_indicators',

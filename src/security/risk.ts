@@ -251,6 +251,13 @@ export function buildReport(input: BuildReportInput): RiskReport {
   const band = severityFromScore(score);
   let severity = severityRank(band) > severityRank(worstObserved) ? worstObserved : band;
 
+  // …and never *below* LOW while a real finding exists. A handful of small
+  // findings can score under the LOW band and render as 🟢 SAFE, which reads
+  // as "nothing here" directly above a list of things that are there.
+  if (findings.length > 0 && severityRank(worstObserved) > severityRank('safe') && severity === 'safe') {
+    severity = 'low';
+  }
+
   // A correlation that concluded CRITICAL must be reported as CRITICAL. The
   // score bands are a summary of accumulated evidence; when several indicators
   // have already been matched against a named threat pattern, the verdict is
