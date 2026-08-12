@@ -9,7 +9,7 @@ A complete walkthrough from an empty Cloudflare account to a bot answering `/sta
 - A Telegram bot token from [@BotFather](https://t.me/BotFather)
 
 ```bash
-git clone https://github.com/OWNER/devnet-toolbox.git
+git clone https://github.com/amirnikzadcr-code/devnet-toolbox.git
 cd devnet-toolbox
 npm install
 npx wrangler login      # or export CLOUDFLARE_API_TOKEN

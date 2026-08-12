@@ -9,19 +9,21 @@
     "enabled": true
   },
   "vars": {
-    "ENVIRONMENT": "production"
+    "ENVIRONMENT": "production",
+    "BOT_USERNAME": "Toolsbotxbot",
+    "REPO_URL": "https://github.com/amirnikzadcr-code/devnet-toolbox"
   },
   "kv_namespaces": [
     {
       "binding": "STATE",
-      "id": "REPLACE_WITH_KV_NAMESPACE_ID"
+      "id": "e7ffd4520d984dc6bc8a8bfde311066b"
     }
   ],
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "devnet_toolbox",
-      "database_id": "REPLACE_WITH_D1_DATABASE_ID"
+      "database_id": "276da91c-b835-4c6a-ba6f-b06e31704c5f"
     }
   ]
   // Secrets (never in this file):

@@ -6,7 +6,7 @@
 
 Persian-first UI with full English support · Webhook-only · Zero heavy dependencies
 
-[![CI](https://github.com/OWNER/devnet-toolbox/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/devnet-toolbox/actions/workflows/ci.yml)
+[![CI](https://github.com/amirnikzadcr-code/devnet-toolbox/actions/workflows/ci.yml/badge.svg)](https://github.com/amirnikzadcr-code/devnet-toolbox/actions/workflows/ci.yml)
 ![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-F38020)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6)
 ![Tests](https://img.shields.io/badge/tests-291%20passing-brightgreen)
@@ -213,7 +213,7 @@ All generators use `crypto.getRandomValues` — never `Math.random`.
 **Requirements:** Node.js ≥ 20, npm, a Cloudflare account, a Telegram bot token from [@BotFather](https://t.me/BotFather).
 
 ```bash
-git clone https://github.com/OWNER/devnet-toolbox.git
+git clone https://github.com/amirnikzadcr-code/devnet-toolbox.git
 cd devnet-toolbox
 npm install
 ```
