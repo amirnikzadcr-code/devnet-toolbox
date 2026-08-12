@@ -51,6 +51,78 @@ export const SECURITY_LIMITS = {
   historyPerPage: 5,
 } as const;
 
+/**
+ * Phase 3 limits for the 20 additional tools.
+ *
+ * Every value here is a hard guard rail: the bot runs on a Worker with a
+ * 128 MB / 30 s budget shared by all users, so each new tool states exactly
+ * how much input it will look at and how much output it will produce.
+ */
+export const TOOL_LIMITS = {
+  /** YAML / XML / CSV documents: characters of source we will parse. */
+  maxStructuredChars: 8000,
+  /** Diff checker: characters per side and total lines compared. */
+  maxDiffCharsPerSide: 6000,
+  maxDiffLines: 1200,
+  /** Rows rendered inline before the result is delivered as a file. */
+  maxInlineDiffRows: 60,
+  /** CSV: rows / columns accepted. */
+  maxCsvRows: 2000,
+  maxCsvColumns: 60,
+  /** Duplicate-line remover. */
+  maxLines: 3000,
+  /** Number base converter / programmer calculator (bits of precision). */
+  maxIntegerBits: 128,
+  /** README / Dockerfile / .gitignore generators. */
+  maxGeneratedDocChars: 12_000,
+  /** Output longer than this is delivered as a .txt/.md/.json attachment. */
+  fileDeliveryThreshold: 2800,
+  /** Largest attachment the bot will ever upload back to Telegram. */
+  maxOutgoingFileBytes: 512 * 1024,
+} as const;
+
+/** File-input tools (image metadata, hash comparison). */
+export const TOOL_FILE_LIMITS = {
+  /** Largest upload accepted by a file-based tool. */
+  maxFileBytes: 8 * 1024 * 1024,
+  /** How long the first file of a two-file comparison is remembered (seconds). */
+  pairTtlSec: 900,
+} as const;
+
+/**
+ * HTTP Request Builder (requirement 14) — the only tool that sends a
+ * user-controlled request, so its budget is the tightest in the project.
+ */
+export const HTTP_BUILDER = {
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD'] as const,
+  /**
+   * Ports this tool may target.
+   *
+   * Deliberately narrower than `ALLOWED_PORTS`: that list exists for the
+   * port-*check* tool, which legitimately probes SSH, SMTP and database
+   * ports. Letting the request builder reach them would turn it into a
+   * scanner for non-HTTP services.
+   */
+  allowedPorts: [80, 443, 8080, 8443, 3000, 5000, 8000] as readonly number[],
+  /** Hard timeout for the outbound request. */
+  timeoutMs: 8000,
+  /** Largest request body the user may send. */
+  maxBodyBytes: 8 * 1024,
+  /** Largest response we will read (the rest is dropped, not buffered). */
+  maxResponseBytes: 32 * 1024,
+  /** Response body characters shown inline. */
+  maxShownBodyChars: 1200,
+  /** Custom headers the user may set. */
+  maxHeaders: 15,
+  maxHeaderValueChars: 300,
+  /** Headers the user is never allowed to override (anti-abuse / anti-spoofing). */
+  blockedHeaders: [
+    'host', 'cf-connecting-ip', 'x-forwarded-for', 'x-forwarded-host', 'x-real-ip',
+    'forwarded', 'content-length', 'connection', 'transfer-encoding', 'upgrade',
+    'te', 'trailer', 'expect', 'cookie', 'proxy-authorization',
+  ] as readonly string[],
+} as const;
+
 export const RATE_LIMIT = {
   /** Generic actions (menu navigation, cheap tools). */
   general: { windowSec: 60, max: 45 },

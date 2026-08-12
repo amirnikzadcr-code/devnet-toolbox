@@ -48,6 +48,20 @@ export const fa = {
   tool_result_title: '✅ <b>{tool}</b>',
   tool_cancelled: '✖️ عملیات لغو شد.',
 
+  // ─── Phase 3: file-based tools & attachments ────────────
+  tool_file_prompt: '📎 فایل موردنظر را به‌صورت <b>Document</b> ارسال کنید.',
+  tool_file_waiting: '⏳ در انتظار فایل شما برای <b>{tool}</b> …\n\nبرای لغو، «انصراف» را بزنید.',
+  tool_file_needed: 'این ابزار به فایل نیاز دارد؛ لطفاً یک Document ارسال کنید (نه متن).',
+  tool_file_too_large: 'حجم فایل بیش از حد مجاز ({size}) است.',
+  tool_file_download_failed: 'دریافت فایل از تلگرام ممکن نشد. دوباره تلاش کنید.',
+  tool_file_bad_type: 'نوع این فایل برای ابزار انتخابی مناسب نیست.',
+  tool_file_downloading: '⬇️ در حال دریافت فایل…',
+  tool_file_second: '📥 فایل اول ثبت شد. حالا فایل دوم را بفرستید.',
+  tool_attachment_sent: '📎 خروجی کامل به‌صورت فایل ارسال شد.',
+  tool_attachment_failed: '⚠️ ارسال فایل پیوست ممکن نشد؛ خلاصه در بالا آمده است.',
+  tool_text_needed: 'این ابزار ورودی متنی می‌خواهد، نه فایل.',
+  btn_copy_hint: '💡 برای کپی، روی متن داخل کادر ضربه بزنید.',
+
   // ─── Profile ────────────────────────────────────────────
   profile_title: '👤 <b>پروفایل شما</b>',
   profile_name: '🏷 نام',

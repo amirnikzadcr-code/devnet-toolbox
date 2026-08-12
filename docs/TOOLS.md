@@ -2,7 +2,7 @@
 
 # Tool reference
 
-**45 tools** across 4 categories, plus a virtual ⚡ Quick Tools screen that surfaces the 16 most-used ones.
+**65 tools** across 4 categories, plus a virtual ⚡ Quick Tools screen that surfaces the 24 most-used ones.
 
 | Flag | Meaning |
 |---|---|
@@ -20,7 +20,7 @@
 
 ## Programming 💻
 
-*Everyday developer tools: JSON, Base64, JWT, regex, formatters and text stats.* — 16 tools.
+*Everyday developer tools: JSON, YAML, XML, Base64, JWT, regex, number bases, diff, Docker, Git and formatters.* — 26 tools.
 
 ### `json_format` — JSON Formatter ⚡ ⌨️
 
@@ -33,8 +33,15 @@ Pretty-prints minified or messy JSON with 2-space indentation and reports struct
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Input: {"a":1,"b":[1,2]}
+Output:
+{
+  "a": 1,
+  "b": [
+    1,
+    2
+  ]
+}
 ```
 
 **Limitations.** Max 8000 input characters; very large output is truncated. JSON5/comments are not supported.
@@ -50,8 +57,11 @@ Strips all redundant whitespace from JSON and reports the size saving.
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Input:
+{
+  "a": 1
+}
+Output: {"a":1}
 ```
 
 **Limitations.** Key order is preserved; comments are not supported.
@@ -67,8 +77,8 @@ Validates JSON syntax and, on failure, points at the approximate offending line/
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Input: {"a":1,}
+Output: ❌ Syntax error near position 7
 ```
 
 **Limitations.** Syntax validation only; JSON Schema validation is not supported.
@@ -84,8 +94,8 @@ Encodes any Unicode text (Persian, emoji included) to standard and URL-safe Base
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Input: DevNet
+Output: RGV2TmV0
 ```
 
 **Limitations.** Max 8000 characters. Not intended for binary files.
@@ -101,8 +111,8 @@ Decodes standard or URL-safe Base64 back to UTF-8 text, fixing padding automatic
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Input: RGV2TmV0
+Output: DevNet
 ```
 
 **Limitations.** Binary payloads may render as unreadable text.
@@ -118,8 +128,8 @@ Percent-encodes text for safe use in URLs; shows both encodeURIComponent and enc
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Input: a b&c=1
+Output: a%20b%26c%3D1
 ```
 
 **Limitations.** Max 8000 characters.
@@ -135,8 +145,8 @@ Decodes percent-encoded strings back to plain text with a clear error on malform
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Input: a%20b
+Output: a b
 ```
 
 **Limitations.** Malformed sequences such as %E0 raise an error.
@@ -152,8 +162,8 @@ Converts special HTML characters to entities and back — useful to prevent XSS 
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Input: <b>hi</b>
+Output: &amp;lt;b&amp;gt;hi&amp;lt;/b&amp;gt;
 ```
 
 **Limitations.** Only common named and numeric entities are supported.
@@ -169,8 +179,8 @@ Decodes a JWT header and payload and renders standard claims (exp/iat/nbf) as re
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Input: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjMifQ.sig
+Output: pretty-printed header & payload
 ```
 
 **Limitations.** ⚠️ The signature is NOT verified. Avoid sending live/sensitive tokens — content is not stored, but prefer test tokens.
@@ -186,8 +196,10 @@ Runs a regular expression against a test subject and lists every match, its inde
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Input:
+/\d+/g
+ab 12 cd 34
+Output: 2 matches → 12 (index 3), 34 (index 9)
 ```
 
 **Limitations.** Max 300-char pattern, 4000-char subject and 50 reported matches (ReDoS protection).
@@ -203,8 +215,13 @@ Re-indents minified HTML, aware of void elements and preformatted blocks.
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Input: <div><p>hi</p></div>
+Output:
+<div>
+  <p>
+    hi
+  </p>
+</div>
 ```
 
 **Limitations.** Lightweight formatting, not a Prettier replacement; severely malformed HTML may not indent perfectly.
@@ -220,8 +237,11 @@ Formats CSS and also returns a minified version with the size saving.
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Input: a{color:red;}
+Output:
+a {
+  color: red;
+}
 ```
 
 **Limitations.** Complex SCSS/LESS syntax is not supported.
@@ -237,8 +257,11 @@ Re-indents JavaScript source while leaving strings, template literals and commen
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Input: function a(){return 1;}
+Output:
+function a() {
+  return 1;
+}
 ```
 
 **Limitations.** Token-based (not AST-based) formatting; complex code may not be perfect. Code is never executed.
@@ -254,8 +277,8 @@ Converts a CommonMark subset (headings, lists, quotes, links, code, bold/italic)
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Input: # Hello
+Output: <h1>Hello</h1>
 ```
 
 **Limitations.** Tables, footnotes and raw HTML pass-through are not supported.
@@ -271,8 +294,8 @@ Counts characters, words, lines, sentences, paragraphs, UTF-8 bytes, top words a
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Input: hello world
+Output: 2 words, 11 characters
 ```
 
 **Limitations.** Max 8000 characters.
@@ -288,15 +311,200 @@ Generates secure random strings in several formats: alphanumeric, hex, Base64URL
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Input: 16
+Output: four 16-char strings
 ```
 
 **Limitations.** Length 4–256.
 
+### `yaml_json` — YAML ↔ JSON Converter ⚡ ⌨️
+
+**فارسی:** مبدل YAML ↔ JSON — YAML را به JSON و JSON را به YAML تبدیل می‌کند؛ سند را اعتبارسنجی می‌کند، مرتب (Format) یا فشرده (Minify) می‌سازد و خطا را همراه شماره‌ی خط توضیح می‌دهد.
+
+Converts YAML to JSON and JSON to YAML, validates the document, formats or minifies it, and reports errors with the exact line number.
+
+**Usage.** Send the document; the direction is detected automatically. To choose it manually, make the first line one of: <code>mode: to-json</code> • <code>mode: to-yaml</code> • <code>mode: validate</code> • <code>mode: format</code> • <code>mode: minify</code>
+
+**Example**
+
+```
+Input:
+name: app
+port: 8080
+
+Output:
+{
+  "name": "app",
+  "port": 8080
+}
+```
+
+**Limitations.** Max 8000 characters and 2000 lines. Anchors/aliases, custom tags, multi-document files and tab indentation are not supported.
+
+### `xml_format` — XML Formatter & Validator ⌨️
+
+**فارسی:** قالب‌بندی و اعتبارسنجی XML — سند XML را اعتبارسنجی می‌کند، با تورفتگی خوانا مرتب می‌کند یا فشرده می‌سازد و ساختار درختی آن را نشان می‌دهد.
+
+Validates an XML document, pretty-prints or minifies it, and shows the element tree.
+
+**Usage.** Send the XML document. Optional first line: <code>mode: format</code> • <code>mode: minify</code> • <code>mode: validate</code> • <code>mode: tree</code>
+
+**Example**
+
+```
+Input: <code>&lt;a&gt;&lt;b x="1"/&gt;&lt;/a&gt;</code>
+Output:
+&lt;a&gt;
+  &lt;b x="1"/&gt;
+&lt;/a&gt;
+```
+
+**Limitations.** Max 8000 characters, depth 100. For security, a DOCTYPE with an internal subset is rejected and no external entity is ever expanded (XXE / billion-laughs protection).
+
+### `base_convert` — Number Base Converter ⚡ ⌨️
+
+**فارسی:** مبدل مبنای عدد — عدد را همزمان در مبناهای دودویی، هشت‌هشتی، ده‌دهی و شانزده‌شانزدهی نشان می‌دهد؛ پیشوندهای 0x/0b/0o را می‌شناسد، ارقام نامعتبر را با پیام روشن رد می‌کند و نمایش مکمل دو را برای اعداد منفی می‌دهد.
+
+Shows a number in binary, octal, decimal and hexadecimal at once. Understands 0x/0b/0o prefixes, rejects invalid digits with a clear message and adds the two's-complement view for negatives.
+
+**Usage.** Send any of these forms: • <code>255</code>, <code>0xFF</code> or <code>0b1010</code> • <code>FF hex</code> — declare the input base • <code>255 dec to bin</code> — targeted conversion
+
+**Example**
+
+```
+Input: 0xFF
+Output: Binary 1111 1111 • Octal 377 • Decimal 255 • Hex FF
+```
+
+**Limitations.** Integers up to 128 bits only. Fractional and floating-point values are not supported.
+
+### `prog_calc` — Programmer Calculator ⌨️
+
+**فارسی:** ماشین‌حساب برنامه‌نویس — عملیات بیتی و صحیح روی اعداد در هر مبنایی: AND، OR، XOR، NOT، شیفت چپ/راست، باقی‌مانده و چهار عمل اصلی. نتیجه همزمان در چهار مبنا نمایش داده می‌شود.
+
+Bitwise and integer maths in any base: AND, OR, XOR, NOT, left/right shift, modulo and the four basic operations. The result is shown in all four bases at once.
+
+**Usage.** Write the expression with spaces: <code>0xFF AND 0x0F</code> • <code>12 XOR 10</code> • <code>1 SHL 8</code> • <code>NOT 0b1010</code> • <code>17 MOD 5</code> Append <code>:8</code>, <code>:16</code>, <code>:32</code> or <code>:64</code> to pick the word width.
+
+**Example**
+
+```
+Input: 0xFF AND 0x0F
+Output: 0x0F • 15 • 0b1111
+```
+
+**Limitations.** One operator per expression, integers only. The default word width is 64 bits; NOT and shifts are masked to that width.
+
+### `diff_check` — Diff Checker ⚡ ⌨️
+
+**فارسی:** مقایسه‌گر متن و کد (Diff) — دو متن یا دو قطعه کد را خط‌به‌خط مقایسه می‌کند و خطوط اضافه‌شده، حذف‌شده، تغییریافته و بدون‌تغییر را به‌همراه آمار و درصد شباهت نشان می‌دهد. خروجی بزرگ به‌صورت فایل ارسال می‌شود.
+
+Compares two texts or code snippets line by line and reports added, removed, changed and unchanged lines with statistics and a similarity score. Large output is delivered as a file.
+
+**Usage.** First text, then a <code>---</code> line, then the second text: <code>const a = 1; --- const a = 2;</code> Optional first line for options: <code>flags: ignorecase ignorewhitespace</code>
+
+**Example**
+
+```
+Input:
+hello
+---
+hello world
+
+Output: 1 change • 0% similarity
+```
+
+**Limitations.** Max 6000 characters per side and 1200 lines in total. Comparison is line-level, not word- or character-level.
+
+### `regex_helper` — Regex Generator & Explainer ⚡ ⌨️
+
+**فارسی:** سازنده و توضیح‌دهنده‌ی Regex — یک الگوی Regex را جزءبه‌جزء به زبان ساده توضیح می‌دهد، پرچم‌ها را شرح می‌دهد و نمونه تطبیق نشان می‌دهد؛ یا از روی توصیف ساده (مثل «ایمیل») یک الگوی آزموده‌شده می‌سازد. الگوی نامعتبر و الگوهای مستعد ReDoS رد می‌شوند.
+
+Explains a regex piece by piece in plain language, describes its flags and shows sample matches; or builds a tested pattern from a simple description such as "email". Invalid and ReDoS-prone patterns are rejected.
+
+**Usage.** Do either: • Explain: send the pattern — <code>/^\d{3}-\d{4}$/</code> • Generate: <code>generate: email</code> Add a subject on the following lines to test it against your own text.
+
+**Example**
+
+```
+Input: /\d{4}-\d{2}/g
+Output: 4 digits, a dash, 2 digits + explanation of the g flag
+```
+
+**Limitations.** Max 300-character pattern and 4000-character subject; at most 60 tokens are explained. Patterns with nested quantifiers such as (a+)+ are refused because of the ReDoS risk.
+
+### `docker_helper` — Docker Helper ⌨️
+
+**فارسی:** دستیار Docker — برای Node.js، Python، PHP، Go، Rust و Java یک Dockerfile چندمرحله‌ای و امن می‌سازد (کاربر غیر-root، تگ ثابت، بدون ابزار build در ایمیج نهایی) و می‌تواند docker-compose برای App، PostgreSQL، MySQL، Redis و Nginx تولید کند.
+
+Generates a hardened multi-stage Dockerfile for Node.js, Python, PHP, Go, Rust and Java (non-root user, pinned tags, no build tooling in the final image) and can produce a docker-compose file for App, PostgreSQL, MySQL, Redis and Nginx.
+
+**Usage.** • Dockerfile: <code>node</code> • <code>python</code> • <code>php</code> • <code>go</code> • <code>rust</code> • <code>java</code> • Compose: <code>compose: app postgres redis</code> • A matching .dockerignore is included with every Dockerfile.
+
+**Example**
+
+```
+Input: compose: app postgres
+Output: a docker-compose file with the app and PostgreSQL services
+```
+
+**Limitations.** The templates are a safe starting point, not a finished configuration: adapt the language version, build path and ports to your project. No credential is written into the files; all are read from .env.
+
+### `git_helper` — Git Error Helper ⌨️
+
+**فارسی:** دستیار خطاهای Git — پیام خطای Git را می‌گیرد، علت آن را توضیح می‌دهد، راه‌حل گام‌به‌گام و دستور پیشنهادی می‌دهد و هرجا دستوری بتواند کار شما را از بین ببرد، هشدار صریح نشان می‌دهد.
+
+Takes a Git error message, explains the cause, gives a step-by-step fix with the suggested command, and shows an explicit warning wherever a command could destroy your work.
+
+**Usage.** Paste the Git error exactly as your terminal printed it, or describe the topic (e.g. <code>merge conflict</code>, <code>undo commit</code>, <code>secret in commit</code>).
+
+**Example**
+
+```
+Input: ! [rejected] main -> main (non-fast-forward)
+Output: cause + git fetch/rebase + a warning about force pushing
+```
+
+**Limitations.** The knowledge base covers 10 frequent errors and does not replace inspecting your actual repository. No command is ever executed — only suggested.
+
+### `gitignore_gen` — .gitignore Generator ⌨️
+
+**فارسی:** سازنده‌ی .gitignore — برای Node.js، Python، Flutter، Dart، Android، Java، C/C++، Go، Rust، React، Next.js، Laravel، WordPress و Unity فایل .gitignore می‌سازد و همیشه بخش «Secrets» را اضافه می‌کند تا .env و کلیدها به مخزن نروند.
+
+Builds a .gitignore for Node.js, Python, Flutter, Dart, Android, Java, C/C++, Go, Rust, React, Next.js, Laravel, WordPress and Unity, always adding a "secrets" section so .env files and keys never reach the repository.
+
+**Usage.** Name one or more stacks: <code>node react next</code> or <code>python</code>. The output is previewed and also sent as a downloadable file.
+
+**Example**
+
+```
+Input: node next
+Output: a .gitignore containing the Node.js, Next.js and secrets sections
+```
+
+**Limitations.** The templates are generic; add your project-specific paths yourself. A file that is already tracked is not ignored by .gitignore — you must run <code>git rm --cached</code> first.
+
+### `readme_gen` — README Generator ⌨️
+
+**فارسی:** سازنده‌ی README — از روی مشخصات پروژه یک README استاندارد به Markdown می‌سازد: عنوان، توضیح، نشان‌ها، فهرست مطالب، امکانات، پیش‌نیازها، نصب، نحوه‌ی استفاده، جدول متغیرهای محیطی، جدول API، مشارکت و مجوز.
+
+Builds a standard Markdown README from your project details: title, description, badges, table of contents, features, requirements, installation, usage, an environment-variable table, an API table, contributing and license.
+
+**Usage.** Write the details line by line: <code>name: My API description: A small REST service language: TypeScript framework: Hono features: auth, pagination install: npm ci usage: npm start env: DATABASE_URL - connection string api: GET /users - list users license: MIT</code>
+
+**Example**
+
+```
+Input: name: My API
+language: Go
+Output: a ready README.md with every standard section
+```
+
+**Limitations.** Only the project name is mandatory; empty sections are filled with placeholder guidance. Never write the real value of an environment variable — only its name.
+
 ## Network 🌐
 
-*Network diagnostics: DNS, IP, HTTP, SSL, domain, port and connectivity.* — 11 tools.
+*Network diagnostics: DNS, IP, HTTP, SSL, domain, port, connectivity and a custom HTTP request builder.* — 12 tools.
 
 ### `dns_lookup` — DNS Lookup ⚡ 🌐 ⌨️
 
@@ -309,8 +517,8 @@ Resolves DNS records through Cloudflare DNS-over-HTTPS (1.1.1.1), showing record
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Input: example.com MX
+Output: MX records with priority and TTL
 ```
 
 **Limitations.** Public domains only. Results are cached for up to 5 minutes. Limit: 8 network requests/minute.
@@ -326,8 +534,8 @@ Finds the hostname associated with an IPv4 or IPv6 address by querying its PTR r
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Input: 1.1.1.1
+Output: one.one.one.one
 ```
 
 **Limitations.** Many IPs have no PTR record. Private IPs are not allowed.
@@ -343,8 +551,8 @@ Shows geolocation and network data for an IP or domain: country, city, timezone,
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Input: 1.1.1.1
+Output: 🇦🇺 Australia • AS13335 Cloudflare
 ```
 
 **Limitations.** Data comes from the public ipwho.is service, falling back to ip-api.com when it is unavailable, and may be approximate. Private IPs are rejected. Results are cached for 5 minutes.
@@ -360,8 +568,8 @@ Sends a GET request and reports status code, response time, content type, server
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Input: https://example.com
+Output: 🟢 200 OK • 142ms
 ```
 
 **Limitations.** http/https on web ports only. 8s timeout. Internal addresses are blocked. Limit: 8 requests/minute.
@@ -377,8 +585,8 @@ Lists all response headers and audits key security headers (HSTS, CSP, X-Frame-O
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Input: example.com
+Output: header list + security audit
 ```
 
 **Limitations.** Up to 30 headers are shown. Some sites return different headers to bots.
@@ -394,8 +602,8 @@ Reads the active certificate from public Certificate Transparency logs and shows
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Input: github.com
+Output: 🔒 Valid • Issuer Sectigo • 245 days left
 ```
 
 **Limitations.** Data comes from public CT logs (certspotter), not a direct TLS handshake; private or unlogged certificates are invisible. Results are cached for 5 minutes.
@@ -411,8 +619,8 @@ Follows the redirect chain to the final URL and extracts page metadata (title, d
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Input: example.com
+Output: page title, final URL, status
 ```
 
 **Limitations.** Only the first 64 KB is read; JavaScript-rendered pages may expose no metadata.
@@ -428,8 +636,8 @@ Fetches registration data via the official RDAP protocol (the modern WHOIS): reg
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Input: cloudflare.com
+Output: registrar, created 2009, expiry, 4 nameservers
 ```
 
 **Limitations.** Not every TLD supports RDAP (some ccTLDs); in that case only DNS data is shown. Owner personal data is redacted under GDPR and is never displayed here.
@@ -445,8 +653,8 @@ Checks whether a single TCP port on a host accepts connections. Only well-known 
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Input: example.com:443
+Output: 🟢 Open • HTTPS • 38ms
 ```
 
 **Limitations.** One port per request (range scanning is not supported). Allowed ports: 80, 443, 8080, 8443, 21, 22, 25, 53, 110, 143, 465, 587, 993, 995, 3306, 5432, 6379, 27017. Internal and private hosts are blocked. Limit: 8 network requests/minute, 120/day.
@@ -462,8 +670,8 @@ Sends three consecutive requests and reports min/avg/max response time. ICMP is 
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Input: google.com
+Output: 🟢 3/3 successful • avg 41ms
 ```
 
 **Limitations.** This is not real ICMP; timings include TLS and server processing. Only 3 samples are taken to avoid loading the target.
@@ -479,15 +687,31 @@ Shows connection metadata reported by Cloudflare at the edge: data centre, count
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Output: colo=FRA • country=DE
 ```
 
 **Limitations.** Because of the webhook architecture your own IP is not available and is never shown (privacy by design).
 
+### `http_request` — HTTP Request Builder 🌐 ⌨️
+
+**فارسی:** سازنده‌ی درخواست HTTP — یک درخواست HTTP دلخواه (GET، POST، PUT، PATCH، DELETE، HEAD) با هدر، پارامتر و بدنه‌ی دلخواه می‌سازد و می‌فرستد، سپس کد وضعیت، هدرهای پاسخ، بدنه و زمان پاسخ را نشان می‌دهد. مقصدهای داخلی، لوکال و متادیتای ابری — حتی پس از ریدایرکت — مسدود هستند.
+
+Builds and sends a custom HTTP request (GET, POST, PUT, PATCH, DELETE, HEAD) with your headers, query parameters and body, then reports the status code, response headers, body and response time. Internal, loopback and cloud-metadata targets are blocked — including after a redirect.
+
+**Usage.** First line: method and URL. Next lines: headers (<code>Name: value</code>) or parameters (<code>?key=value</code>). Body after one blank line: <code>POST https://httpbin.org/post Content-Type: application/json ?debug=1 {"name":"test"}</code>
+
+**Example**
+
+```
+Input: GET https://api.github.com/zen
+Output: 200 OK • ~180ms • response body
+```
+
+**Limitations.** 8s timeout • 8 KB request body • 32 KB of response read • at most 15 headers • at most 5 redirects (each re-validated) • 8 requests per minute and 120 per day. Host, Cookie and X-Forwarded-* headers and internal/private/metadata addresses are refused.
+
 ## Security 🔐
 
-*Defensive tooling: hashing, HMAC, secure password/token generation, UUIDs.* — 8 tools.
+*Defensive tooling: hashing, file hash comparison, HMAC, secure password/token generation, UUIDs.* — 9 tools.
 
 ### `hash_all` — Hash Generator ⚡ ⌨️
 
@@ -500,8 +724,8 @@ Computes MD5, SHA-1, SHA-256, SHA-384 and SHA-512 digests of the input at once, 
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Input: abc
+SHA-256: ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
 ```
 
 **Limitations.** Text only (no file hashing). MD5/SHA-1 are unsuitable for security purposes.
@@ -517,8 +741,8 @@ Computes a SHA-256 digest using native WebCrypto — the recommended standard fo
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Input: abc
+Output: ba7816bf…f20015ad (64 hex chars)
 ```
 
 **Limitations.** Text only (no files). Max 8000 characters.
@@ -534,8 +758,8 @@ Computes a SHA-1 digest, provided only for legacy compatibility (e.g. Git object
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Input: abc
+Output: a9993e364706816aba3e25717850c26c9cd0d89d
 ```
 
 **Limitations.** This algorithm is cryptographically broken and must not be used for security.
@@ -551,8 +775,8 @@ Computes an MD5 digest, suitable for non-sensitive checksum comparison and legac
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Input: abc
+Output: 900150983cd24fb0d6963f7d28e17f72
 ```
 
 **Limitations.** This algorithm is cryptographically broken and must not be used for security.
@@ -568,8 +792,7 @@ Generates unique identifiers: UUID v4 (fully random, RFC 4122) and UUID v7 (time
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Output: 9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d
 ```
 
 **Limitations.** Max 20 identifiers per run.
@@ -585,8 +808,8 @@ Generates strong passwords with a cryptographically secure RNG (crypto.getRandom
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Input: 24 aA0!
+Output: three 24-char passwords + entropy
 ```
 
 **Limitations.** Length between 4 and 256. Passwords are never stored or logged.
@@ -602,8 +825,7 @@ Produces ready-to-use environment values: a 256-bit hex key, a Base64URL token, 
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Output: SECRET_KEY=7f3a… (64 hex chars)
 ```
 
 **Limitations.** Generated values are never stored — save them somewhere safe immediately.
@@ -619,15 +841,36 @@ Computes an HMAC-SHA-256 message authentication code — used for signing webhoo
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Input:
+key
+The quick brown fox
+Output: hex HMAC-SHA-256
 ```
 
 **Limitations.** SHA-256 only. The key is not stored, but avoid sending production keys.
 
+### `file_hash_compare` — File Hash Comparison ⌨️
+
+**فارسی:** مقایسه‌ی هش دو فایل — دو فایل را یکی پس از دیگری می‌گیرد، برای هرکدام MD5، SHA-1 و SHA-256 محاسبه می‌کند و می‌گوید یکسان‌اند یا نه. برای بررسی سلامت دانلود و تشخیص دستکاری فایل مناسب است.
+
+Takes two files one after the other, computes MD5, SHA-1 and SHA-256 for each, and reports whether they match. Useful for verifying downloads and detecting tampering.
+
+**Usage.** Send the first file as a <b>Document</b>, then the second one. The verdict appears after the second file arrives.
+
+**Example**
+
+```
+Input: two ZIP files
+Output: MATCH ✅ or NOT MATCH ❌ together with all three hashes
+```
+
+**Input.** Upload a document (max 8 MB), two files one after the other.
+
+**Limitations.** Each file may be at most 8 MB, within the Bot API's 20 MB ceiling. Your file is never stored; only the first file's hashes are kept until the second arrives (15 minutes maximum). MD5 and SHA-1 are for comparison only, never for security decisions.
+
 ## Utilities 🛠
 
-*Calculator, unit conversion, QR, timestamps, colours, URLs and cron.* — 10 tools.
+*Calculator, unit conversion, QR, date/time, timezones, CSV, image metadata, text transforms, URLs and cron.* — 18 tools.
 
 ### `calculator` — Calculator ⚡ ⌨️
 
@@ -640,8 +883,8 @@ Evaluates mathematical expressions with correct precedence, parentheses, exponen
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Input: (2+3)*4
+Output: 20
 ```
 
 **Limitations.** Max 200 characters, IEEE-754 doubles only, no variables, no complex numbers.
@@ -657,8 +900,8 @@ Converts between Unix timestamps (s or ms) and human-readable dates, adding rela
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Input: 1700000000
+Output: 2023-11-14 22:13:20 UTC
 ```
 
 **Limitations.** Output is always UTC; local time zones are not applied.
@@ -674,8 +917,8 @@ Converts between length, mass, data, time, speed, area, volume and temperature u
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Input: 10 km to mi
+Output: 6.2137
 ```
 
 **Limitations.** Supported: m,km,cm,mm,mi,yd,ft,in,nmi • kg,g,mg,t,lb,oz • b,kb,mb,gb,tb • s,ms,min,h,d,wk • m/s,km/h,mph,kn • m2,km2,ha,ft2,ac • l,ml,m3,gal,qt • c,f,k
@@ -691,8 +934,8 @@ Builds QR image links (multiple sizes) for text, URLs, Wi-Fi or any short payloa
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Input: https://example.com
+Output: QR image link
 ```
 
 **Limitations.** Max 900 characters. Image rendering is delegated to the external api.qrserver.com service.
@@ -708,8 +951,8 @@ Counts characters against common platform limits (tweet, SMS, SEO metadata, Tele
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Input: hello
+Output: 5 characters, 1 word
 ```
 
 **Limitations.** Max 8000 characters.
@@ -725,8 +968,8 @@ Converts text into 9 common naming conventions: camelCase, PascalCase, snake_cas
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Input: hello world
+Output: helloWorld, HelloWorld, hello_world …
 ```
 
 **Limitations.** Not intended for long prose; word boundaries are detected on spaces, dashes, underscores and dots.
@@ -742,8 +985,8 @@ Converts colours between HEX, RGB, HSL and CMYK, computes contrast against black
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Input: #3498db
+Output: rgb(52, 152, 219) • hsl(204, 70%, 53%)
 ```
 
 **Limitations.** Alpha channel is ignored; only 13 common colour names are supported.
@@ -759,8 +1002,8 @@ Breaks a URL into its components (scheme, host, port, path, query, fragment) and
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Input: https://a.com/p?x=1#f
+Output: scheme=https, host=a.com, x=1
 ```
 
 **Limitations.** Local parsing only; no request is sent to the URL.
@@ -776,8 +1019,8 @@ Strips tracking parameters (utm_*, fbclid, gclid …), normalises the path and r
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Input: https://a.com/p?utm_source=x&id=2
+Output: https://a.com/p?id=2
 ```
 
 **Limitations.** Fully local; no request is sent and redirects are not followed.
@@ -793,11 +1036,160 @@ Validates a 5-field cron expression, describes it in plain language and shows co
 **Example**
 
 ```
-input : (no input required)
-output: undefined
+Input: 0 9 * * 1-5
+Output: Weekdays at 09:00
 ```
 
 **Limitations.** Standard 5-field syntax only (no seconds field, no month/day names).
+
+### `datetime_convert` — Date & Time Converter ⚡ ⌨️
+
+**فارسی:** مبدل تاریخ و زمان — بین Unix timestamp و تاریخ خوانا در هر دو جهت تبدیل می‌کند، ثانیه و میلی‌ثانیه (۱۰ و ۱۳ رقمی) را خودکار تشخیص می‌دهد و خروجی را به‌صورت ISO 8601، UTC، RFC و زمان محلی یک منطقه نشان می‌دهد.
+
+Converts between Unix timestamps and human dates in both directions, auto-detects 10-digit (seconds) and 13-digit (millisecond) epochs, and prints ISO 8601, UTC, RFC and local-zone views.
+
+**Usage.** Send one of: • <code>1700000000</code> or <code>1700000000000</code> • <code>2024-01-01T12:30:00Z</code> • <code>now</code> Append a zone after <code>@</code> for the local view: <code>1700000000 @ Europe/Berlin</code>
+
+**Example**
+
+```
+Input: 1700000000 @ Asia/Tehran
+Output: 2023-11-14 22:13:20 UTC • 2023-11-15 01:43:20 (Asia/Tehran)
+```
+
+**Limitations.** Dates outside 1970–9999 are not supported. Output uses the Gregorian calendar.
+
+### `timezone_convert` — Timezone Converter ⌨️
+
+**فارسی:** مبدل منطقه‌ی زمانی — یک زمان را از یک منطقه‌ی زمانی IANA به منطقه‌های دیگر تبدیل می‌کند، اختلاف ساعت را نشان می‌دهد و وضعیت ساعت تابستانی (DST) هر منطقه را در همان لحظه مشخص می‌کند.
+
+Converts a time from one IANA timezone to others, shows the offset difference and reports whether daylight saving time is active in each zone at that instant.
+
+**Usage.** Format: <code>&lt;time&gt; &lt;source zone&gt; to &lt;target zone&gt;</code> Examples: • <code>2024-07-01 14:30 Europe/Berlin to Asia/Tehran</code> • <code>now Asia/Tehran to America/New_York</code> • <code>now Europe/Berlin</code> — compare against every common zone
+
+**Example**
+
+```
+Input: 2024-07-01 14:30 Europe/Berlin to Asia/Tehran
+Output: 2024-07-01 17:00 (Asia/Tehran, +1:30 difference)
+```
+
+**Limitations.** Only IANA identifiers (e.g. Europe/Berlin) are accepted; abbreviations such as CET or PST are ambiguous and unsupported. During a DST gap or overlap, the nearest valid instant is reported.
+
+### `text_transform` — Text Transformer ⚡ ⌨️
+
+**فارسی:** تبدیل‌گر متن — متن را همزمان به ۹ حالت نام‌گذاری (camelCase، PascalCase، snake_case، kebab-case، CONSTANT_CASE، dot.case، Title Case، UPPERCASE، lowercase) و همچنین حذف فاصله‌ها، یکسان‌سازی فاصله‌ها، معکوس‌سازی و slug تبدیل می‌کند.
+
+Converts text into all 9 naming conventions (camelCase, PascalCase, snake_case, kebab-case, CONSTANT_CASE, dot.case, Title Case, UPPERCASE, lowercase) plus space removal, whitespace normalisation, reversal and slugification.
+
+**Usage.** Send text or an identifier. To get a single variant, make the first line <code>mode: camel</code> (or snake, kebab, constant, dot, pascal, title, upper, lower, slug, nospace, normalize).
+
+**Example**
+
+```
+Input: hello dev world
+Output: helloDevWorld • hello_dev_world • hello-dev-world …
+```
+
+**Limitations.** Max 8000 characters. Word boundaries come from spaces, dashes, underscores, dots and case changes; not intended for long prose.
+
+### `dedupe_lines` — Duplicate Line Remover ⌨️
+
+**فارسی:** حذف خطوط تکراری — خطوط تکراری را حذف می‌کند و ترتیب اولین ظهور هر خط را حفظ می‌کند. حذف خطوط خالی، حساسیت به بزرگی/کوچکی حروف، مرتب‌سازی و نمایش فقط موارد تکراری قابل انتخاب است و آمار کامل ارائه می‌شود.
+
+Removes duplicate lines while preserving the order of first occurrence. Optional blank-line removal, case sensitivity, sorting and duplicates-only mode, with full statistics.
+
+**Usage.** Send the list of lines. Optional first line for options: <code>flags: casesensitive keepempty sort onlydup notrim</code> Defaults: case-insensitive, blank lines removed, original order kept.
+
+**Example**
+
+```
+Input:
+a
+b
+a
+
+Output:
+a
+b
+(3 lines → 2 unique, 1 removed)
+```
+
+**Limitations.** Max 3000 lines and 8000 characters. Lines are compared in full, not partially.
+
+### `csv_json` — CSV ↔ JSON Converter ⌨️
+
+**فارسی:** مبدل CSV ↔ JSON — CSV را به JSON و JSON را به CSV تبدیل می‌کند. جداکننده و سطر عنوان را خودکار تشخیص می‌دهد، فیلدهای نقل‌قولی و چندخطی را درست می‌خواند و خروجی بزرگ را به‌صورت فایل می‌فرستد.
+
+Converts CSV to JSON and JSON to CSV. Detects the delimiter and the header row automatically, handles quoted and multi-line fields, and delivers large output as a file.
+
+**Usage.** Send the data; the direction is detected automatically. Optional first line: <code>mode: to-json</code> • <code>mode: to-csv</code> • <code>mode: validate</code>
+
+**Example**
+
+```
+Input:
+name,age
+ada,36
+
+Output:
+[{"name":"ada","age":"36"}]
+```
+
+**Limitations.** Max 8000 characters, 2000 rows, 60 columns. JSON→CSV requires an array of flat objects, and every CSV value is read as a string.
+
+### `image_metadata` — Image Metadata Inspector ⌨️
+
+**فارسی:** بازرس متادیتای تصویر — نوع واقعی، حجم، ابعاد و قالب تصویر را می‌خواند و متادیتای EXIF شامل تاریخ عکس‌برداری، مدل دوربین، نرم‌افزار، شماره سریال و مختصات GPS را استخراج می‌کند و درباره‌ی داده‌های حریم‌خصوصی هشدار می‌دهد.
+
+Reads the true type, size, dimensions and format of an image and extracts EXIF metadata — capture date, camera model, software, serial numbers and GPS coordinates — warning about anything that leaks privacy.
+
+**Usage.** Send the image as a <b>Document</b>, not as a Photo. <i>Note: sending it as a Photo makes Telegram strip the metadata, leaving nothing to show.</i>
+
+**Example**
+
+```
+Input: a JPEG straight from a camera
+Output: 4032×3024 • Apple iPhone 13 • 2024-05-02 • ⚠️ GPS coordinates found
+```
+
+**Input.** Upload a document (max 8 MB).
+
+**Limitations.** Max 8 MB. EXIF extraction covers JPEG, TIFF and PNG; dimensions are read for JPEG, PNG, GIF, BMP and WebP. Your file is never stored.
+
+### `url_parse_pro` — Advanced URL Parser ⚡ ⌨️
+
+**فارسی:** تجزیه‌گر پیشرفته‌ی URL — آدرس را کامل تجزیه می‌کند: پروتکل، نام کاربری، میزبان، پورت، مسیر، کوئری، fragment، دامنه، زیردامنه و TLD؛ پارامترها را جدا می‌کند، نسخه‌ی Encode و Decode شده را می‌سازد و هشدار می‌دهد اگر آدرس به شبکه‌ی داخلی اشاره کند.
+
+Fully decomposes a URL: scheme, userinfo, host, port, path, query, fragment, domain, subdomain and TLD; lists every parameter, produces encoded and decoded forms, and warns when the URL points at an internal network.
+
+**Usage.** Send a full URL, e.g. <code>https://user@api.example.co.uk:8443/v1/items?q=a%20b&page=2#top</code>
+
+**Example**
+
+```
+Input: https://api.example.co.uk/v1?x=1
+Output: scheme=https • subdomain=api • domain=example • tld=co.uk
+```
+
+**Limitations.** Parsing is entirely local; no request is sent to the URL. TLD detection uses a list of the most common suffixes rather than the full Public Suffix List.
+
+### `cron_builder` — Cron Generator & Explainer ⚡ ⌨️
+
+**فارسی:** سازنده و توضیح‌دهنده‌ی Cron — عبارت Cron را بخش‌به‌بخش توضیح می‌دهد و پنج اجرای بعدی را در منطقه‌ی زمانی دلخواه پیش‌بینی می‌کند؛ یا از روی توصیف ساده مثل «every 5 minutes» عبارت می‌سازد.
+
+Explains a cron expression field by field and predicts the next five runs in the timezone you choose; or builds an expression from a description such as "every 5 minutes".
+
+**Usage.** • Explain: <code>*/5 * * * *</code> • Generate: <code>generate: every 5 minutes</code> • Timezone: append <code>@ Europe/Berlin</code>.
+
+**Example**
+
+```
+Input: 0 9 * * 1-5 @ Asia/Tehran
+Output: weekdays at 09:00 + the next five runs in Tehran time
+```
+
+**Limitations.** Standard 5-field syntax only. Shortcuts such as @daily and the non-standard L, W and # suffixes are unsupported. Prediction searches up to two years ahead.
 
 ## Quick Tools
 
@@ -805,7 +1197,7 @@ The ⚡ Quick Tools screen is not a separate category — it is a shortcut list 
 
 `quick` flag, so a tool appears both in its own category and here:
 
-`json_format` · `base64_encode` · `base64_decode` · `jwt_decode` · `dns_lookup` · `ip_info` · `http_status` · `ping` · `hash_all` · `sha256` · `uuid_gen` · `password_gen` · `calculator` · `timestamp` · `qr_code` · `color_convert`
+`json_format` · `base64_encode` · `base64_decode` · `jwt_decode` · `yaml_json` · `base_convert` · `diff_check` · `regex_helper` · `dns_lookup` · `ip_info` · `http_status` · `ping` · `hash_all` · `sha256` · `uuid_gen` · `password_gen` · `calculator` · `timestamp` · `qr_code` · `color_convert` · `datetime_convert` · `text_transform` · `url_parse_pro` · `cron_builder`
 
 ---
 

@@ -86,7 +86,12 @@ export function toolPage(lang: Lang, tool: ToolDefinition): string {
     `${t(lang, 'tool_example_label')}\n<pre>${escapeHtml(pick(lang, tool.example))}</pre>`,
     `${t(lang, 'tool_limits_label')}\n<i>${pick(lang, tool.limitations)}</i>`,
     DIVIDER,
-    tool.needsInput ? t(lang, 'tool_prompt') : t(lang, 'tool_no_input'),
+    // Phase 3: a file tool asks for a document, not a text message.
+    tool.file
+      ? pick(lang, tool.file.prompt)
+      : tool.needsInput
+        ? t(lang, 'tool_prompt')
+        : t(lang, 'tool_no_input'),
   ];
   return rows.filter(Boolean).join('\n');
 }
@@ -95,10 +100,15 @@ export function waitingPage(lang: Lang, tool: ToolDefinition): string {
   return [
     `${tool.icon} <b>${pick(lang, tool.title)}</b>`,
     DIVIDER,
-    t(lang, 'tool_waiting', { tool: pick(lang, tool.title) }),
+    tool.file
+      ? t(lang, 'tool_file_waiting', { tool: pick(lang, tool.title) })
+      : t(lang, 'tool_waiting', { tool: pick(lang, tool.title) }),
     '',
+    tool.file ? pick(lang, tool.file.prompt) : '',
     `${t(lang, 'tool_usage_label')}\n${pick(lang, tool.usage)}`,
-  ].join('\n');
+  ]
+    .filter((row, index) => row !== '' || index < 4)
+    .join('\n');
 }
 
 export function resultPage(lang: Lang, tool: ToolDefinition, html: string): string {

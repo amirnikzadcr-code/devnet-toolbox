@@ -10,7 +10,7 @@ import { getTool, CATEGORIES } from '../tools/registry.js';
 import * as S from './screens.js';
 import * as P from './pages.js';
 import * as UI from './ui.js';
-import { runTool } from './runner.js';
+import { deliverAttachment, runFileTool, runTool, type RunOutcome } from './runner.js';
 import { clearPending, getPending, isDuplicateUpdate, setPending, cacheLang, readCachedLang } from '../services/state.js';
 import * as SF from './security-flow.js';
 import { SEC } from './security-ui.js';
@@ -137,6 +137,17 @@ async function handleMessage(message: TgMessage, env: Env, waitUntil: (p: Promis
     return;
   }
 
+  // Phase 3: a pending *file-based tool* consumes the upload the same way,
+  // reusing the one pending slot rather than adding a parallel mechanism.
+  if (pending) {
+    const pendingTool = getTool(pending.toolId);
+    if (pendingTool?.file && (message.document || message.photo)) {
+      await clearPending(env.STATE, user.id);
+      await runFileToolFlow(ctx, pendingTool, message);
+      return;
+    }
+  }
+
   // An upload with nothing pending: tell the user which scan to pick rather
   // than silently ignoring a file they deliberately sent.
   if (!pending && (message.document || message.photo)) {
@@ -159,6 +170,15 @@ async function handleMessage(message: TgMessage, env: Env, waitUntil: (p: Promis
       await ctx.tg.sendMessage(ctx.chatId, P.errorPage(ctx.lang, t(ctx.lang, 'err_unknown_tool')));
       return;
     }
+    // A file tool received text: keep waiting instead of running with nothing.
+    if (tool.file) {
+      await ctx.tg.sendMessage(
+        ctx.chatId,
+        P.errorPage(ctx.lang, t(ctx.lang, 'tool_file_needed')),
+        UI.waitingKeyboard(ctx.lang, tool),
+      );
+      return;
+    }
     await clearPending(env.STATE, user.id);
     const loading = await ctx.tg.sendMessage(ctx.chatId, t(ctx.lang, 'tool_processing'));
     const outcome = await runTool(ctx, tool, text);
@@ -168,6 +188,7 @@ async function handleMessage(message: TgMessage, env: Env, waitUntil: (p: Promis
     } else {
       await ctx.tg.sendMessage(ctx.chatId, outcome.text, outcome.keyboard);
     }
+    await sendAttachment(ctx, outcome);
     return;
   }
 
@@ -216,6 +237,54 @@ async function runSecurityScanFlow(ctx: BotContext, kind: ScanType, message: TgM
     if (!edited.ok) await ctx.tg.sendMessage(ctx.chatId, outcome.text, outcome.keyboard);
   } else {
     await ctx.tg.sendMessage(ctx.chatId, outcome.text, outcome.keyboard);
+  }
+}
+
+/**
+ * Runs a file-based tool end to end.
+ *
+ * The download can take a few seconds, so a placeholder message goes out
+ * first and is edited in place with the result — one message per run, never a
+ * burst of consecutive ones.
+ */
+async function runFileToolFlow(ctx: BotContext, tool: ReturnType<typeof getTool> & object, message: TgMessage): Promise<void> {
+  const loading = await ctx.tg.sendMessage(ctx.chatId, t(ctx.lang, 'tool_file_downloading'));
+  const loadingId = loading.result?.message_id;
+
+  const outcome = await runFileTool(ctx, tool, message);
+
+  if (loadingId) {
+    const edited = await ctx.tg.editMessageText(ctx.chatId, loadingId, outcome.text, outcome.keyboard);
+    if (!edited.ok) await ctx.tg.sendMessage(ctx.chatId, outcome.text, outcome.keyboard);
+  } else {
+    await ctx.tg.sendMessage(ctx.chatId, outcome.text, outcome.keyboard);
+  }
+  await sendAttachment(ctx, outcome);
+
+  // A pair tool that is still waiting for its second file re-arms the slot.
+  if (outcome.ok && tool.file?.pair) {
+    const stored = await ctx.env.STATE.get(`pair:${tool.id}:${ctx.user.id}`);
+    if (stored) {
+      await setPending(ctx.env.STATE, ctx.user.id, {
+        toolId: tool.id,
+        messageId: ctx.messageId ?? 0,
+        chatId: ctx.chatId,
+        createdAt: Date.now(),
+      });
+    }
+  }
+}
+
+/** Uploads a tool attachment when there is one; never throws. */
+async function sendAttachment(ctx: BotContext, outcome: RunOutcome): Promise<void> {
+  if (!outcome.attachment) return;
+  try {
+    const ok = await deliverAttachment(ctx, outcome.attachment);
+    if (!ok) {
+      await ctx.tg.sendMessage(ctx.chatId, t(ctx.lang, 'tool_attachment_failed'));
+    }
+  } catch (error) {
+    logError('router.sendAttachment', error);
   }
 }
 
@@ -472,6 +541,11 @@ async function dispatchCallback(ctx: BotContext, query: TgCallbackQuery, data: s
       return;
     }
     if (tool.needsInput) {
+      // A file tool starts with a clean slate: any half-finished pair from a
+      // previous attempt would otherwise be compared against the new upload.
+      if (tool.file?.pair) {
+        await ctx.env.STATE.delete(`pair:${tool.id}:${ctx.user.id}`).catch(() => undefined);
+      }
       await setPending(ctx.env.STATE, ctx.user.id, {
         toolId: tool.id,
         messageId: ctx.messageId ?? 0,
@@ -487,6 +561,7 @@ async function dispatchCallback(ctx: BotContext, query: TgCallbackQuery, data: s
     await ack(t(ctx.lang, 'toast_loading'));
     const outcome = await runTool(ctx, tool, '');
     await edit(ctx, outcome);
+    await sendAttachment(ctx, outcome);
     return;
   }
 

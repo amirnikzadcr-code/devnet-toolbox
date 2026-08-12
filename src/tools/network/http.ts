@@ -4,7 +4,7 @@ import { safeFetch } from '../../services/http.js';
 import { parseHttpUrl } from '../../utils/validate.js';
 import { LIMITS } from '../../config/index.js';
 
-const STATUS_MEANING: Record<number, { fa: string; en: string }> = {
+export const STATUS_MEANING: Record<number, { fa: string; en: string }> = {
   200: { fa: 'موفق', en: 'OK' },
   201: { fa: 'ایجاد شد', en: 'Created' },
   204: { fa: 'بدون محتوا', en: 'No Content' },
@@ -23,7 +23,7 @@ const STATUS_MEANING: Record<number, { fa: string; en: string }> = {
   504: { fa: 'اتمام مهلت دروازه', en: 'Gateway Timeout' },
 };
 
-function statusIcon(status: number): string {
+export function statusIcon(status: number): string {
   if (status >= 200 && status < 300) return '🟢';
   if (status >= 300 && status < 400) return '🔵';
   if (status >= 400 && status < 500) return '🟠';

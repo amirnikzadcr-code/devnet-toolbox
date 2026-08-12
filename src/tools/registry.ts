@@ -34,6 +34,16 @@ import {
   urlParser,
 } from './utilities/index.js';
 import { networkTools } from './network/index.js';
+// ─── Phase 3: 20 additional tools ───────────────────────────
+import { csvJsonTool, xmlFormatterTool, yamlJsonTool } from './programming/data-formats.js';
+import { baseConverterTool, programmerCalcTool } from './programming/numbers.js';
+import { diffTool, duplicateLineTool, textTransformTool } from './programming/text-tools.js';
+import { regexHelperTool } from './programming/regex-tools.js';
+import { dockerTool, gitignoreTool, gitTool, readmeTool } from './programming/devops.js';
+import { dateTimeTool, timezoneTool } from './utilities/datetime.js';
+import { cronBuilderTool } from './utilities/cron.js';
+import { fileHashCompareTool, imageMetadataTool } from './utilities/files.js';
+import { httpRequestBuilderTool, urlParserProTool } from './network/request-builder.js';
 
 /** Every tool in the bot, in display order. */
 export const ALL_TOOLS: ToolDefinition[] = [
@@ -54,8 +64,20 @@ export const ALL_TOOLS: ToolDefinition[] = [
   markdownTool,
   textStatsTool,
   randomStringTool,
+  // 💻 Programming — Phase 3 additions
+  yamlJsonTool,
+  xmlFormatterTool,
+  baseConverterTool,
+  programmerCalcTool,
+  diffTool,
+  regexHelperTool,
+  dockerTool,
+  gitTool,
+  gitignoreTool,
+  readmeTool,
   // 🌐 Network
   ...networkTools,
+  httpRequestBuilderTool,
   // 🔐 Security
   hashAllTool,
   sha256Tool,
@@ -65,6 +87,7 @@ export const ALL_TOOLS: ToolDefinition[] = [
   passwordTool,
   secretTool,
   hmacTool,
+  fileHashCompareTool,
   // 🛠 Utilities
   calculatorTool,
   timestampTool,
@@ -76,6 +99,15 @@ export const ALL_TOOLS: ToolDefinition[] = [
   urlParser,
   urlInfoLocal,
   cronTool,
+  // 🛠 Utilities — Phase 3 additions
+  dateTimeTool,
+  timezoneTool,
+  textTransformTool,
+  duplicateLineTool,
+  csvJsonTool,
+  imageMetadataTool,
+  urlParserProTool,
+  cronBuilderTool,
 ];
 
 const TOOL_MAP: Map<string, ToolDefinition> = new Map(ALL_TOOLS.map((tool) => [tool.id, tool]));
@@ -93,8 +125,8 @@ export const CATEGORIES: CategoryMeta[] = [
     icon: '💻',
     title: { fa: 'برنامه‌نویسی', en: 'Programming' },
     description: {
-      fa: 'ابزارهای روزمره‌ی توسعه: JSON، Base64، JWT، Regex، فرمترها و آمار متن.',
-      en: 'Everyday developer tools: JSON, Base64, JWT, regex, formatters and text stats.',
+      fa: 'ابزارهای روزمره‌ی توسعه: JSON، YAML، XML، Base64، JWT، Regex، مبنای عدد، Diff، Docker، Git و فرمترها.',
+      en: 'Everyday developer tools: JSON, YAML, XML, Base64, JWT, regex, number bases, diff, Docker, Git and formatters.',
     },
   },
   {
@@ -102,8 +134,8 @@ export const CATEGORIES: CategoryMeta[] = [
     icon: '🌐',
     title: { fa: 'شبکه', en: 'Network' },
     description: {
-      fa: 'تشخیص و بررسی شبکه: DNS، IP، HTTP، SSL، دامنه، پورت و تست دسترسی.',
-      en: 'Network diagnostics: DNS, IP, HTTP, SSL, domain, port and connectivity.',
+      fa: 'تشخیص و بررسی شبکه: DNS، IP، HTTP، SSL، دامنه، پورت، تست دسترسی و ساخت درخواست HTTP.',
+      en: 'Network diagnostics: DNS, IP, HTTP, SSL, domain, port, connectivity and a custom HTTP request builder.',
     },
   },
   {
@@ -111,8 +143,8 @@ export const CATEGORIES: CategoryMeta[] = [
     icon: '🔐',
     title: { fa: 'امنیت', en: 'Security' },
     description: {
-      fa: 'ابزارهای دفاعی: هش، HMAC، تولید رمز و توکن امن، UUID.',
-      en: 'Defensive tooling: hashing, HMAC, secure password/token generation, UUIDs.',
+      fa: 'ابزارهای دفاعی: هش، مقایسه‌ی هش فایل، HMAC، تولید رمز و توکن امن، UUID.',
+      en: 'Defensive tooling: hashing, file hash comparison, HMAC, secure password/token generation, UUIDs.',
     },
   },
   {
@@ -120,8 +152,8 @@ export const CATEGORIES: CategoryMeta[] = [
     icon: '🛠',
     title: { fa: 'ابزارهای کاربردی', en: 'Utilities' },
     description: {
-      fa: 'ماشین‌حساب، تبدیل واحد، QR، تایم‌استمپ، رنگ، URL و کرون.',
-      en: 'Calculator, unit conversion, QR, timestamps, colours, URLs and cron.',
+      fa: 'ماشین‌حساب، تبدیل واحد، QR، تاریخ و زمان، منطقه‌ی زمانی، CSV، متادیتای تصویر، تبدیل متن، URL و کرون.',
+      en: 'Calculator, unit conversion, QR, date/time, timezones, CSV, image metadata, text transforms, URLs and cron.',
     },
   },
 ];
@@ -136,6 +168,15 @@ export function toolsByCategory(category: ToolCategory): ToolDefinition[] {
 
 export function quickTools(): ToolDefinition[] {
   return ALL_TOOLS.filter((tool) => tool.quick === true);
+}
+
+/** Tools whose input is an uploaded document rather than a text message. */
+export function fileTools(): ToolDefinition[] {
+  return ALL_TOOLS.filter((tool) => tool.file !== undefined);
+}
+
+export function isFileTool(tool: ToolDefinition): boolean {
+  return tool.file !== undefined;
 }
 
 export function categoryMeta(id: ToolCategory): CategoryMeta | undefined {

@@ -39,7 +39,15 @@ for (const category of CATEGORIES) {
     out.push(`**فارسی:** ${esc(tool.title.fa)} — ${esc(tool.description.fa)}`, '');
     out.push(esc(tool.description.en), '');
     out.push(`**Usage.** ${esc(tool.usage.en)}`, '');
-    out.push('**Example**', '', '```', `input : ${tool.example.input || '(no input required)'}`, `output: ${tool.example.output}`, '```', '');
+    // `example` is a bilingual free-text block, not an {input, output} pair.
+    out.push('**Example**', '', '```', tool.example.en.trim() || '(no input required)', '```', '');
+    if (tool.file) {
+      out.push(
+        `**Input.** Upload a document (max ${Math.round(tool.file.maxBytes / (1024 * 1024))} MB)` +
+          `${tool.file.pair ? ', two files one after the other' : ''}.`,
+        '',
+      );
+    }
     out.push(`**Limitations.** ${esc(tool.limitations.en)}`, '');
   }
 }

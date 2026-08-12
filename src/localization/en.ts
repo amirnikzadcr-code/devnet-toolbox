@@ -45,6 +45,20 @@ export const en = {
   tool_result_title: '✅ <b>{tool}</b>',
   tool_cancelled: '✖️ Operation cancelled.',
 
+  // ─── Phase 3: file-based tools & attachments ────────────
+  tool_file_prompt: '📎 Send the file as a <b>Document</b>.',
+  tool_file_waiting: '⏳ Waiting for your file for <b>{tool}</b> …\n\nPress “Cancel” to abort.',
+  tool_file_needed: 'This tool needs a file; please send a Document rather than text.',
+  tool_file_too_large: 'The file exceeds the {size} limit.',
+  tool_file_download_failed: 'Could not fetch the file from Telegram. Please try again.',
+  tool_file_bad_type: 'That file type is not suitable for the selected tool.',
+  tool_file_downloading: '⬇️ Downloading the file…',
+  tool_file_second: '📥 First file recorded. Now send the second one.',
+  tool_attachment_sent: '📎 The full output was sent as a file.',
+  tool_attachment_failed: '⚠️ The attachment could not be sent; the summary above still applies.',
+  tool_text_needed: 'This tool expects text input, not a file.',
+  btn_copy_hint: '💡 Tap the text inside a code block to copy it.',
+
   profile_title: '👤 <b>Your Profile</b>',
   profile_name: '🏷 Name',
   profile_username: '🔖 Username',
