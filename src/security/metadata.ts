@@ -514,7 +514,14 @@ function deviceFindings(items: MetadataItem[]): Finding[] {
     });
   }
 
-  const timestamps = items.filter((item) => /Date|Time/i.test(item.key) && item.value);
+  // Match real timestamps only. A bare /Date|Time/ also catches ExposureTime
+  // and GPSTimeStamp-style camera settings, so the report listed
+  // "ExposureTime: 0.0133" as evidence of when the file was created.
+  const TIMESTAMP_KEYS = new Set([
+    'DateTime', 'DateTimeOriginal', 'DateTimeDigitized', 'ModificationTime',
+    'CreationDate', 'ModDate', 'GPSDateStamp',
+  ]);
+  const timestamps = items.filter((item) => TIMESTAMP_KEYS.has(item.key) && item.value);
   if (timestamps.length > 0) {
     findings.push({
       id: 'privacy.timestamps',

@@ -349,6 +349,11 @@ describe('History storage helpers', () => {
     expect(redactLabel('apk', 'BankApp-v2.apk')).toBe('*.apk');
   });
 
+  it('keeps well-known manifest names, which carry nothing private', () => {
+    expect(redactLabel('dependency', 'package.json')).toBe('package.json');
+    expect(redactLabel('dependency', 'go.mod')).toBe('go.mod');
+  });
+
   it('never returns the raw text for a secret scan', () => {
     expect(redactLabel('secret', FAKE_AWS_KEY)).toBe('text input');
   });

@@ -341,6 +341,14 @@ describe('Metadata privacy scanner', () => {
     expect(finding?.confidence).toBe(100);
   });
 
+  it('does not mistake camera settings for timestamps', () => {
+    // ExposureTime is a shutter speed, not a record of when the photo was taken.
+    const jpeg = jpegWithExif([{ tag: 0x0132, value: '2024:01:01 10:00:00' }]);
+    const result = extractMetadata(jpeg, 'image/jpeg');
+    const evidence = result.findings.find((item) => item.id === 'privacy.timestamps')?.evidence ?? [];
+    expect(evidence.join(' ')).not.toMatch(/ExposureTime|FNumber|FocalLength/);
+  });
+
   it('marks author and serial number as sensitive', () => {
     const jpeg = jpegWithExif([
       { tag: 0x013b, value: 'Jane Doe' },

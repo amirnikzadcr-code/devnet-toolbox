@@ -59,6 +59,12 @@ export function redactLabel(scanType: ScanType, raw: string): string {
     }
   }
   if (scanType === 'apk' || scanType === 'file' || scanType === 'dependency') {
+    // Manifest names are well-known and carry nothing private, so keeping them
+    // is more useful than "file" — the history is unreadable otherwise.
+    const KNOWN_MANIFESTS = ['package.json', 'requirements.txt', 'go.mod', 'Cargo.toml', 'composer.json'];
+    const match = KNOWN_MANIFESTS.find((name) => raw.toLowerCase().endsWith(name.toLowerCase()));
+    if (match) return match;
+
     const extension = raw.includes('.') ? raw.split('.').pop() ?? '' : '';
     return extension && extension.length <= 8 ? `*.${extension.toLowerCase()}` : 'file';
   }
