@@ -360,7 +360,7 @@ export function extraChunks(report: RiskReport, ctx: BotContext, detailed = fals
 
 /** Requirement 14: a standalone alert message for HIGH/CRITICAL verdicts. */
 export function alertMessage(report: RiskReport, ctx: BotContext): string | null {
-  const banner = alertBanner(report.severity, ctx.lang);
+  const banner = alertBanner(report.severity, ctx.lang, report.scanType);
   return banner === '' ? null : banner;
 }
 

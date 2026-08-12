@@ -263,11 +263,16 @@ export function buildReport(input: BuildReportInput): RiskReport {
   // have already been matched against a named threat pattern, the verdict is
   // that pattern's, not the arithmetic's.
   if (hasCritical && severity !== 'critical') {
+    const fromCorrelation = findings.some(
+      (item) => item.severity === 'critical' && item.category === 'correlation',
+    );
     severity = 'critical';
     steps.push({
-      label: { fa: 'الگوی همبستهٔ بحرانی', en: 'Correlated critical pattern' },
+      label: fromCorrelation
+        ? { fa: 'الگوی همبستهٔ بحرانی', en: 'Correlated critical pattern' }
+        : { fa: 'یافته‌ی بحرانی قطعی', en: 'Confirmed critical finding' },
       points: 0,
-      detail: 'verdict set by correlation rule',
+      detail: fromCorrelation ? 'verdict set by correlation rule' : 'verdict set by a critical finding',
     });
   }
 

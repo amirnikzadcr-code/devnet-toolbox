@@ -299,6 +299,15 @@ describe('Report rendering', () => {
     expect(html).toContain('&lt;script&gt;');
   });
 
+  it('tailors the critical alert to the kind of target', () => {
+    // "Do not install" is right for an APK and nonsense for a leaked key.
+    expect(alertBanner('critical', 'en', 'apk')).toMatch(/install/i);
+    expect(alertBanner('critical', 'en', 'secret')).toMatch(/rotate|revoke/i);
+    expect(alertBanner('critical', 'en', 'secret')).not.toMatch(/install/i);
+    expect(alertBanner('critical', 'en', 'url')).toMatch(/phishing|open it/i);
+    expect(alertBanner('critical', 'fa', 'secret')).toContain('باطل');
+  });
+
   it('shows an alert banner only for high and critical verdicts', () => {
     expect(alertBanner('critical', 'en')).toContain('CRITICAL');
     expect(alertBanner('high', 'en')).toContain('HIGH');

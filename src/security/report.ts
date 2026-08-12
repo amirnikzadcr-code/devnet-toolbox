@@ -8,7 +8,7 @@
  * HTML is the readable format here, and `renderMarkdown()` exists for anyone
  * who wants to archive the result.
  */
-import type { Finding, Ioc, RiskReport, Severity } from './types.js';
+import type { Finding, Ioc, RiskReport, ScanType, Severity } from './types.js';
 import { CATEGORY_LABEL, SEVERITY_META, pickText } from './types.js';
 import { severityRank } from './risk.js';
 import { buildIocTree, iocIcon, type IocNode } from './ioc.js';
@@ -16,12 +16,43 @@ import type { Lang } from '../localization/index.js';
 import { DIVIDER, escapeHtml, mono } from '../utils/text.js';
 
 /** Requirement 14: HIGH and CRITICAL must be impossible to miss. */
-export function alertBanner(severity: Severity, lang: Lang): string {
+export function alertBanner(severity: Severity, lang: Lang, scanType?: ScanType): string {
+  // The wording has to suit the target. "Do not install this" is right for an
+  // APK and nonsense for a leaked credential, where the urgent action is to
+  // rotate the key — a mismatched alert teaches users to ignore alerts.
+  const criticalText: Record<string, { fa: string; en: string }> = {
+    apk: {
+      fa: 'نشانه‌های متعددی از رفتار خطرناک با هم دیده شده‌اند. این برنامه را نصب نکنید تا وضعیت روشن شود.',
+      en: 'Multiple indicators of dangerous behaviour occur together. Do not install this app until the situation is clear.',
+    },
+    url: {
+      fa: 'این نشانی نشانه‌های روشنی از فیشینگ دارد. آن را باز نکنید و هیچ اطلاعاتی در آن وارد نکنید.',
+      en: 'This address shows clear signs of phishing. Do not open it and do not enter any information.',
+    },
+    secret: {
+      fa: 'اعتبارنامه‌ی فعال در این محتوا پیدا شد. آن را همین حالا باطل و جایگزین کنید؛ حذف کردن فایل کافی نیست.',
+      en: 'A live credential was found in this content. Revoke and rotate it now — deleting the file is not enough.',
+    },
+    file: {
+      fa: 'این فایل داده‌ی بسیار حساسی را فاش می‌کند. پیش از هر اشتراک‌گذاری، متادیتای آن را حذف کنید.',
+      en: 'This file exposes highly sensitive data. Strip its metadata before sharing it anywhere.',
+    },
+    dependency: {
+      fa: 'آسیب‌پذیری بحرانی در وابستگی‌ها یافت شد. در اولین فرصت به نسخه‌ی اصلاح‌شده ارتقا دهید.',
+      en: 'A critical dependency vulnerability was found. Upgrade to the fixed version as a priority.',
+    },
+    ioc: {
+      fa: 'نشانه‌های پرخطری در این محتوا دیده می‌شود. با آن‌ها به‌عنوان زیرساخت مهاجم رفتار کنید.',
+      en: 'High-risk indicators are present. Treat them as attacker infrastructure.',
+    },
+  };
+
   if (severity === 'critical') {
-    return pickText(lang, {
-      fa: '⚫️ <b>هشدار بحرانی</b>\nنشانه‌های متعددی از رفتار خطرناک با هم دیده شده‌اند. تا روشن شدن وضعیت، این مورد را نصب/باز نکنید.',
-      en: '⚫️ <b>CRITICAL ALERT</b>\nMultiple indicators of dangerous behaviour occur together. Do not install/open this until the situation is clear.',
-    });
+    const body = criticalText[scanType ?? ''] ?? {
+      fa: 'نشانه‌های متعددی از خطر جدی با هم دیده شده‌اند. تا روشن شدن وضعیت با احتیاط کامل رفتار کنید.',
+      en: 'Multiple indicators of serious risk occur together. Proceed with full caution until the situation is clear.',
+    };
+    return `⚫️ <b>${pickText(lang, { fa: 'هشدار بحرانی', en: 'CRITICAL ALERT' })}</b>\n${pickText(lang, body)}`;
   }
   if (severity === 'high') {
     return pickText(lang, {
@@ -240,7 +271,7 @@ export function renderReport(report: RiskReport, options: RenderOptions): string
       .join('\n'),
   );
 
-  const banner = alertBanner(report.severity, lang);
+  const banner = alertBanner(report.severity, lang, report.scanType);
   if (banner) sections.push(banner);
 
   // ── Verdict
