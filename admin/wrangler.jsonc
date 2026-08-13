@@ -20,7 +20,11 @@
   "vars": {
     "ADMIN_CHAT_ID": "7951577342",
     "BOT_WORKER_URL": "https://devnet-toolbox.nikiaaaaacr.workers.dev",
-    "BOT_USERNAME": "Toolsbotxbot"
+    "BOT_USERNAME": "Toolsbotxbot",
+    // Account identifier for the GraphQL analytics query on /monitor. Not a
+    // secret (it already appears in every dashboard URL); the token that can
+    // actually read the data is the CF_ANALYTICS_TOKEN Worker secret.
+    "CF_ACCOUNT_ID": "ab95b121d83031cdef673ceabce3e757"
   },
 
   "kv_namespaces": [
