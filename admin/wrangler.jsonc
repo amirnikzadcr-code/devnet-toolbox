@@ -1,0 +1,40 @@
+{
+  // DevNet Toolbox — Admin Panel Worker.
+  //
+  // A separate Worker from the bot, deployed to its own hostname, but bound to
+  // the SAME D1 database and KV namespace so it reads live data and its bans
+  // take effect on the bot immediately.
+  //
+  // Secrets (never in this file):
+  //   ADMIN_PASSWORD  — panel login password
+  //   SESSION_SECRET  — HMAC key for session cookies
+  //   BOT_TOKEN       — Telegram bot token, for 2FA codes and broadcasts
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "devnet-admin",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-01-15",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "observability": { "enabled": true },
+
+  "vars": {
+    "ADMIN_CHAT_ID": "7951577342",
+    "BOT_WORKER_URL": "https://devnet-toolbox.nikiaaaaacr.workers.dev",
+    "BOT_USERNAME": "Toolsbotxbot"
+  },
+
+  "kv_namespaces": [
+    {
+      "binding": "STATE",
+      "id": "e7ffd4520d984dc6bc8a8bfde311066b"
+    }
+  ],
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "devnet_toolbox",
+      "database_id": "276da91c-b835-4c6a-ba6f-b06e31704c5f"
+    }
+  ]
+}

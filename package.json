@@ -8,16 +8,19 @@
     "node": ">=20"
   },
   "scripts": {
+    "admin:build": "wrangler deploy --dry-run --outdir=admin/dist --config admin/wrangler.jsonc",
+    "admin:deploy": "wrangler deploy --config admin/wrangler.jsonc",
+    "admin:dev": "wrangler dev --config admin/wrangler.jsonc",
+    "build": "wrangler deploy --dry-run --outdir=dist && npm run admin:build",
+    "db:init:local": "wrangler d1 execute devnet_toolbox --local --file=./src/db/schema.sql",
+    "db:init:remote": "wrangler d1 execute devnet_toolbox --remote --file=./src/db/schema.sql",
+    "deploy": "wrangler deploy",
     "dev": "wrangler dev",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
     "lint": "eslint . --max-warnings=0",
     "lint:fix": "eslint . --fix",
     "test": "vitest run",
     "test:watch": "vitest",
-    "build": "wrangler deploy --dry-run --outdir=dist",
-    "deploy": "wrangler deploy",
-    "db:init:local": "wrangler d1 execute devnet_toolbox --local --file=./src/db/schema.sql",
-    "db:init:remote": "wrangler d1 execute devnet_toolbox --remote --file=./src/db/schema.sql",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json && tsc --noEmit -p admin/tsconfig.json",
     "verify": "npm run typecheck && npm run lint && npm run test && npm run build"
   },
   "keywords": [

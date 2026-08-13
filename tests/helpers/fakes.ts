@@ -15,10 +15,20 @@ export class FakeKV {
   private store = new Map<string, KvEntry>();
   public puts = 0;
   public gets = 0;
+  /**
+   * Make every operation on a matching key throw, to test how callers behave
+   * during a KV outage (fail-open vs fail-closed).
+   */
+  public failOn: RegExp | null = null;
+
+  private guard(key: string): void {
+    if (this.failOn?.test(key) === true) throw new Error('KV_ERROR: simulated failure');
+  }
 
   // Mirrors the real KV contract: get(key) → string, get(key, 'json') → parsed.
   async get(key: string, type?: unknown): Promise<unknown> {
     this.gets += 1;
+    this.guard(key);
     const entry = this.store.get(key);
     if (!entry) return null;
     if (entry.expiresAt !== undefined && Date.now() > entry.expiresAt) {
@@ -38,12 +48,14 @@ export class FakeKV {
 
   async put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void> {
     this.puts += 1;
+    this.guard(key);
     const entry: KvEntry = { value };
     if (options?.expirationTtl !== undefined) entry.expiresAt = Date.now() + options.expirationTtl * 1000;
     this.store.set(key, entry);
   }
 
   async delete(key: string): Promise<void> {
+    this.guard(key);
     this.store.delete(key);
   }
 

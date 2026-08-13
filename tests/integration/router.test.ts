@@ -291,6 +291,67 @@ describe('resilience', () => {
   });
 });
 
+/**
+ * Bans are set by the admin panel, which writes `ban:<userId>` into the same KV
+ * namespace the bot reads. The drop has to be silent: replying would tell a
+ * spammer the ban exists and give them something to react to.
+ */
+describe('banned users', () => {
+  const BANNED = 606;
+
+  const ban = async (userId = BANNED): Promise<void> => {
+    await kv().put(`ban:${userId}`, JSON.stringify({ at: Date.now(), reason: 'spam' }));
+  };
+
+  it('drops a command from a banned user without replying', async () => {
+    await ban();
+    await run(messageUpdate('/start', { userId: BANNED }));
+    expect(tg.calls).toHaveLength(0);
+  });
+
+  it('drops a button press from a banned user', async () => {
+    await ban();
+    await run(callbackUpdate('help', { userId: BANNED }));
+    expect(tg.calls).toHaveLength(0);
+  });
+
+  it('drops a banned user mid-flow, without answering the pending tool', async () => {
+    await run(callbackUpdate('run:base64_encode', { userId: BANNED }));
+    const before = tg.calls.length;
+    await ban();
+    await run(messageUpdate('hello', { userId: BANNED }));
+    expect(tg.calls.length).toBe(before);
+  });
+
+  it('leaves other users unaffected', async () => {
+    await ban();
+    await run(messageUpdate('/start', { userId: 777 }));
+    expect(tg.sentTexts().join('')).toContain('DevNet');
+  });
+
+  it('serves the user again once the ban is lifted', async () => {
+    await ban();
+    await run(messageUpdate('/start', { userId: BANNED }));
+    expect(tg.calls).toHaveLength(0);
+
+    await kv().delete(`ban:${BANNED}`);
+    await run(messageUpdate('/start', { userId: BANNED }));
+    expect(tg.sentTexts().join('')).toContain('DevNet');
+  });
+
+  it('does not record usage for a dropped update', async () => {
+    await ban();
+    await run(messageUpdate('/start', { userId: BANNED }));
+    expect(db().allSql()).not.toMatch(/INSERT INTO (users|tool_usage)/i);
+  });
+
+  it('fails open when KV is unavailable, rather than locking everyone out', async () => {
+    kv().failOn = /^ban:/;
+    await run(messageUpdate('/start', { userId: BANNED }));
+    expect(tg.sentTexts().join('')).toContain('DevNet');
+  });
+});
+
 describe('every tool is reachable and renders a detail page', () => {
   it('renders all tool pages without throwing', async () => {
     for (const tool of ALL_TOOLS) {

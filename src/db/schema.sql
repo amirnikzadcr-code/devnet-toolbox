@@ -88,3 +88,45 @@ CREATE TABLE IF NOT EXISTS favorites (
 );
 
 CREATE INDEX IF NOT EXISTS idx_favorites_user ON favorites (user_id, added_at DESC);
+
+-- ─── Admin panel (separate Worker, same database) ───────────────────────
+-- The panel is a second Worker bound to this database. These tables are the
+-- only state it owns; everything else it shows is read from the bot's tables.
+
+-- Blocked users. The bot mirrors this into KV so the hot path stays a single
+-- cheap read instead of a D1 round-trip on every update.
+CREATE TABLE IF NOT EXISTS banned_users (
+  user_id   INTEGER PRIMARY KEY,
+  reason    TEXT    NOT NULL DEFAULT '',
+  banned_at INTEGER NOT NULL,
+  banned_by TEXT    NOT NULL DEFAULT 'admin'
+);
+
+-- Append-only trail of every state-changing action performed in the panel.
+-- `detail` is a short human-readable summary; it must never contain a secret.
+CREATE TABLE IF NOT EXISTS admin_audit (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  action     TEXT    NOT NULL,
+  target     TEXT    NOT NULL DEFAULT '',
+  detail     TEXT    NOT NULL DEFAULT '',
+  ip         TEXT    NOT NULL DEFAULT '',
+  created_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_audit_date ON admin_audit (created_at DESC);
+
+-- Broadcast history. Message text is kept so a send can be audited, but the
+-- per-recipient result is only ever aggregated into counters.
+CREATE TABLE IF NOT EXISTS broadcasts (
+  id         TEXT    PRIMARY KEY,
+  body       TEXT    NOT NULL,
+  audience   TEXT    NOT NULL DEFAULT 'all',
+  total      INTEGER NOT NULL DEFAULT 0,
+  sent       INTEGER NOT NULL DEFAULT 0,
+  failed     INTEGER NOT NULL DEFAULT 0,
+  status     TEXT    NOT NULL DEFAULT 'running' CHECK (status IN ('running','done','failed')),
+  created_at INTEGER NOT NULL,
+  finished_at INTEGER
+);
+
+CREATE INDEX IF NOT EXISTS idx_broadcasts_date ON broadcasts (created_at DESC);

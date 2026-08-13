@@ -68,3 +68,20 @@ export async function isDuplicateUpdate(kv: KVNamespace, updateId: number): Prom
     return false;
   }
 }
+
+/**
+ * Ban check for the hot path.
+ *
+ * The admin panel writes bans to D1 and mirrors them into KV. Reading the
+ * mirror keeps this a single cheap lookup on every update instead of a D1
+ * round-trip, and a KV failure fails open so an infrastructure blip can never
+ * lock the whole user base out of the bot.
+ */
+export async function isBanned(kv: KVNamespace, userId: number): Promise<boolean> {
+  try {
+    return (await kv.get(`ban:${userId}`)) !== null;
+  } catch (error) {
+    logError('state.isBanned', error, { userId });
+    return false;
+  }
+}

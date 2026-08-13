@@ -11,7 +11,7 @@ import * as S from './screens.js';
 import * as P from './pages.js';
 import * as UI from './ui.js';
 import { deliverAttachment, runFileTool, runTool, type RunOutcome } from './runner.js';
-import { clearPending, getPending, isDuplicateUpdate, setPending, cacheLang, readCachedLang } from '../services/state.js';
+import { clearPending, getPending, isBanned, isDuplicateUpdate, setPending, cacheLang, readCachedLang } from '../services/state.js';
 import * as SF from './security-flow.js';
 import { SEC } from './security-ui.js';
 import { consume } from '../services/ratelimit.js';
@@ -44,6 +44,12 @@ export async function handleUpdate(update: TgUpdate, env: Env, execCtx?: ExecCtx
   const waitUntil = backgroundRunner(execCtx);
   try {
     if (await isDuplicateUpdate(env.STATE, update.update_id)) return;
+
+    // Blocked users are dropped silently before any work is done. Staying
+    // silent avoids handing a spammer a signal to react to, and doing it here
+    // covers messages and button presses alike.
+    const actor = update.message?.from ?? update.callback_query?.from;
+    if (actor && (await isBanned(env.STATE, actor.id))) return;
 
     if (update.callback_query) {
       await handleCallback(update.callback_query, env, waitUntil);

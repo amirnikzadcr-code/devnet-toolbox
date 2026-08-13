@@ -4,12 +4,12 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['dist/**', 'node_modules/**', '.wrangler/**', 'coverage/**'],
+    ignores: ['dist/**', 'node_modules/**', '.wrangler/**', 'coverage/**', 'admin/dist/**'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ['src/**/*.ts', 'tests/**/*.ts'],
+    files: ['src/**/*.ts', 'tests/**/*.ts', 'admin/src/**/*.ts'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',
@@ -25,6 +25,10 @@ export default tseslint.config(
         TextEncoder: 'readonly',
         TextDecoder: 'readonly',
         crypto: 'readonly',
+        btoa: 'readonly',
+        atob: 'readonly',
+        FormData: 'readonly',
+        Intl: 'readonly',
         setTimeout: 'readonly',
         clearTimeout: 'readonly',
         KVNamespace: 'readonly',
