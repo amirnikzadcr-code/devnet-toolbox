@@ -9,6 +9,7 @@ import worker from '../../admin/src/index.js';
 import type { AdminEnv } from '../../admin/src/types.js';
 import {
   AdminD1,
+  barePost,
   cookieFrom,
   execCtx,
   get,
@@ -336,6 +337,31 @@ describe('user actions', () => {
     const response = await worker.fetch(post('/users/555/promote', {}, { cookie }), env, execCtx());
     expect(response.status).toBe(404);
   });
+
+  /**
+   * Regression: unban and purge carry no form fields, so a client that sends a
+   * bodyless POST made `request.formData()` throw and the panel answered 500.
+   * Found against the deployed Worker, not by the earlier tests, which always
+   * sent a urlencoded body.
+   */
+  it('unbans from a POST with no body or content-type', async () => {
+    await worker.fetch(post('/users/555/ban', {}, { cookie }), env, execCtx());
+    const response = await worker.fetch(barePost('/users/555/unban', { cookie }), env, execCtx());
+    expect(response.status).toBe(303);
+    expect(await env.STATE.get('ban:555')).toBeNull();
+  });
+
+  it('purges from a POST with no body or content-type', async () => {
+    const response = await worker.fetch(barePost('/users/555/purge', { cookie }), env, execCtx());
+    expect(response.status).toBe(303);
+    expect(response.headers.get('location')).toContain('/users?ok=');
+  });
+
+  it('treats a bodyless ban as a ban with no reason, not a 500', async () => {
+    const response = await worker.fetch(barePost('/users/555/ban', { cookie }), env, execCtx());
+    expect(response.status).toBe(303);
+    expect(await env.STATE.get('ban:555')).toBe('1');
+  });
 });
 
 describe('broadcast', () => {
@@ -493,5 +519,11 @@ describe('bot settings', () => {
       execCtx(),
     );
     expect(response.headers.get('location')).toContain('err=');
+  });
+
+  it('syncs commands from a POST with no body or content-type', async () => {
+    const response = await worker.fetch(barePost('/bot/commands', { cookie }), env, execCtx());
+    expect(response.status).toBe(303);
+    expect(response.headers.get('location')).toContain('ok=');
   });
 });

@@ -85,6 +85,20 @@ function redirect(location: string, extra: Record<string, string> = {}): Respons
 const clientIp = (request: Request): string => request.headers.get('cf-connecting-ip') ?? 'unknown';
 
 /** Flash messages travel in the query string, so they survive the POST-redirect-GET. */
+/**
+ * `request.formData()` throws when the body is empty or carries no
+ * Content-Type, which is exactly what a fetch/curl POST to an action that
+ * needs no fields looks like. Those actions (unban, purge, command sync) are
+ * legitimate, so treat an unparsable body as "no fields" instead of a 500.
+ */
+async function readForm(request: Request): Promise<FormData> {
+  try {
+    return await request.formData();
+  } catch {
+    return new FormData();
+  }
+}
+
 function flashFrom(url: URL): { kind: 'ok' | 'err'; text: string } | undefined {
   const ok = url.searchParams.get('ok');
   const err = url.searchParams.get('err');
@@ -191,7 +205,7 @@ async function handlePasswordStep(request: Request, env: AdminEnv): Promise<Resp
     return html(loginPage('password', 'تلاش‌های ناموفق بیش از حد. ۱۵ دقیقه دیگر تلاش کنید.'), 429);
   }
 
-  const form = await request.formData();
+  const form = await readForm(request);
   const password = String(form.get('password') ?? '');
 
   if (!password || !safeEqual(password, env.ADMIN_PASSWORD)) {
@@ -224,7 +238,7 @@ async function handleCodeStep(request: Request, env: AdminEnv): Promise<Response
     return html(loginPage('password', 'تلاش‌های ناموفق بیش از حد. ۱۵ دقیقه دیگر تلاش کنید.'), 429);
   }
 
-  const form = await request.formData();
+  const form = await readForm(request);
   const challenge = String(form.get('challenge') ?? '');
   const code = String(form.get('code') ?? '').trim();
 
@@ -356,7 +370,7 @@ async function userAction(
   action: string,
 ): Promise<Response> {
   const ip = clientIp(request);
-  const form = await request.formData();
+  const form = await readForm(request);
   const back = `/users/${userId}`;
 
   if (action === 'ban') {
@@ -406,7 +420,7 @@ async function userAction(
  */
 async function startBroadcast(request: Request, env: AdminEnv, ctx: ExecCtxLike): Promise<Response> {
   const ip = clientIp(request);
-  const form = await request.formData();
+  const form = await readForm(request);
   const body = String(form.get('body') ?? '').trim().slice(0, 3500);
   const audience = String(form.get('audience') ?? 'all');
 
@@ -466,7 +480,7 @@ async function runBroadcast(env: AdminEnv, id: string, body: string, recipients:
 
 async function updateWebhook(request: Request, env: AdminEnv): Promise<Response> {
   const ip = clientIp(request);
-  const form = await request.formData();
+  const form = await readForm(request);
   const target = String(form.get('url') ?? '').trim();
   const secret = String(form.get('secret') ?? '');
 
@@ -510,7 +524,7 @@ async function syncCommands(request: Request, env: AdminEnv): Promise<Response> 
 
 async function updateProfile(request: Request, env: AdminEnv): Promise<Response> {
   const ip = clientIp(request);
-  const form = await request.formData();
+  const form = await readForm(request);
   const telegram = new PanelTelegram(env.BOT_TOKEN);
 
   const fa = String(form.get('fa') ?? '').slice(0, 512);

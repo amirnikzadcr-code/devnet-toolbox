@@ -198,6 +198,18 @@ export function post(
   });
 }
 
+/**
+ * A POST with no body and no Content-Type — what `fetch`/curl send for an
+ * action that needs no fields. `request.formData()` rejects on these, so the
+ * panel must tolerate them.
+ */
+export function barePost(path: string, headers: Record<string, string> = {}): Request {
+  return new Request(`${ORIGIN}${path}`, {
+    method: 'POST',
+    headers: { origin: ORIGIN, ...headers },
+  });
+}
+
 /** Extracts the session cookie value from a Set-Cookie header. */
 export function cookieFrom(response: Response): string {
   const header = response.headers.get('set-cookie') ?? '';

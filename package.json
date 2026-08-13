@@ -8,7 +8,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "admin:build": "wrangler deploy --dry-run --outdir=admin/dist --config admin/wrangler.jsonc",
+    "admin:build": "wrangler deploy --dry-run --outdir=dist --config admin/wrangler.jsonc",
     "admin:deploy": "wrangler deploy --config admin/wrangler.jsonc",
     "admin:dev": "wrangler dev --config admin/wrangler.jsonc",
     "build": "wrangler deploy --dry-run --outdir=dist && npm run admin:build",
