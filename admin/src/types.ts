@@ -23,6 +23,14 @@ export interface AdminEnv {
   BOT_WORKER_URL?: string;
   /** Var: bot username without the @. */
   BOT_USERNAME?: string;
+  /**
+   * Secret (optional): Cloudflare API token with `Account Analytics: Read`,
+   * used only to read usage figures. Absent it, the usage card explains what
+   * is missing instead of showing misleading zeros.
+   */
+  CF_ANALYTICS_TOKEN?: string;
+  /** Var (optional): Cloudflare account id for the usage query. */
+  CF_ACCOUNT_ID?: string;
 
   /** KV: sessions, login throttling and 2FA challenges. */
   STATE: KVNamespace;
@@ -98,4 +106,41 @@ export interface BroadcastRow {
   status: string;
   created_at: number;
   finished_at: number | null;
+}
+
+/** One row of the live activity feed. Metadata only — never message text. */
+export interface ActivityRow {
+  id: number;
+  user_id: number;
+  kind: string;
+  detail: string;
+  ok: number;
+  ms: number;
+  created_at: number;
+  first_name?: string | null;
+  username?: string | null;
+}
+
+/** Per-recipient outcome of a broadcast send. */
+export interface DeliveryRow {
+  user_id: number;
+  status: string;
+  error: string;
+  sent_at: number;
+  first_name?: string | null;
+  username?: string | null;
+}
+
+/** Cloudflare account-level usage, read from the GraphQL analytics API. */
+export interface CloudflareUsage {
+  /** True when the analytics API answered; false means we show why, not zeros. */
+  available: boolean;
+  /** Reason shown to the operator when `available` is false. */
+  reason?: string;
+  workers: { requests: number; errors: number; subrequests: number };
+  /** Per-Worker split so the bot and the panel can be told apart. */
+  scripts: { name: string; requests: number; errors: number }[];
+  d1: { readQueries: number; writeQueries: number };
+  /** Free-plan daily allowances, for the progress bars. */
+  limits: { workerRequests: number; d1Reads: number; d1Writes: number };
 }

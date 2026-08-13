@@ -7,10 +7,12 @@
  * generates only placeholders and binds the values separately.
  */
 import type {
+  ActivityRow,
   AdminEnv,
   AuditRow,
   BroadcastRow,
   DailyPoint,
+  DeliveryRow,
   OverviewStats,
   ToolRow,
   UserRow,
@@ -315,4 +317,162 @@ export async function broadcastAudience(db: D1Database, audience: string): Promi
     `ORDER BY u.last_seen DESC LIMIT 5000`;
   const res = await db.prepare(sql).all<{ user_id: number }>();
   return (res.results ?? []).map((row) => num(row.user_id));
+}
+
+// ─── Live activity feed ─────────────────────────────────────────────────
+
+/**
+ * How long activity rows are kept.
+ *
+ * The feed is an operational tool, not an archive. A short window keeps the
+ * table small and limits how much behavioural history exists about any user.
+ */
+export const ACTIVITY_RETENTION_DAYS = 7;
+
+/** Most recent events, newest first, joined to the user for display. */
+export async function recentActivity(
+  db: D1Database,
+  options: { limit?: number; userId?: number; kind?: string; sinceId?: number } = {},
+): Promise<ActivityRow[]> {
+  const limit = Math.min(Math.max(options.limit ?? 60, 1), 200);
+  const where: string[] = [];
+  const binds: unknown[] = [];
+
+  if (options.userId !== undefined) {
+    binds.push(options.userId);
+    where.push(`a.user_id = ?${binds.length}`);
+  }
+  if (options.kind) {
+    binds.push(options.kind);
+    where.push(`a.kind = ?${binds.length}`);
+  }
+  if (options.sinceId !== undefined) {
+    binds.push(options.sinceId);
+    where.push(`a.id > ?${binds.length}`);
+  }
+
+  binds.push(limit);
+  const sql =
+    `SELECT a.id, a.user_id, a.kind, a.detail, a.ok, a.ms, a.created_at, u.first_name, u.username ` +
+    `FROM activity a LEFT JOIN users u ON u.user_id = a.user_id ` +
+    `${where.length ? `WHERE ${where.join(' AND ')} ` : ''}` +
+    `ORDER BY a.id DESC LIMIT ?${binds.length}`;
+
+  const res = await db.prepare(sql).bind(...binds).all<ActivityRow>();
+  return res.results ?? [];
+}
+
+/** Rolling counters for the monitor header. */
+export async function activityPulse(
+  db: D1Database,
+): Promise<{ lastMin: number; last5Min: number; lastHour: number; errorsHour: number; activeNow: number }> {
+  const now = nowSec();
+  const batch = await db.batch<Record<string, unknown>>([
+    db.prepare('SELECT COUNT(*) AS c FROM activity WHERE created_at >= ?1').bind(now - 60),
+    db.prepare('SELECT COUNT(*) AS c FROM activity WHERE created_at >= ?1').bind(now - 300),
+    db.prepare('SELECT COUNT(*) AS c FROM activity WHERE created_at >= ?1').bind(now - 3600),
+    db.prepare('SELECT COUNT(*) AS c FROM activity WHERE ok = 0 AND created_at >= ?1').bind(now - 3600),
+    db.prepare('SELECT COUNT(DISTINCT user_id) AS c FROM activity WHERE created_at >= ?1').bind(now - 300),
+  ]);
+  const at = (index: number): number => num((batch[index]?.results?.[0] as { c?: unknown })?.c);
+  return {
+    lastMin: at(0),
+    last5Min: at(1),
+    lastHour: at(2),
+    errorsHour: at(3),
+    activeNow: at(4),
+  };
+}
+
+/** Deletes rows past the retention window. Returns how many were removed. */
+export async function pruneActivity(db: D1Database, days = ACTIVITY_RETENTION_DAYS): Promise<number> {
+  const cutoff = nowSec() - days * 86_400;
+  const res = await db.prepare('DELETE FROM activity WHERE created_at < ?1').bind(cutoff).run();
+  return num((res.meta as { changes?: unknown } | undefined)?.changes);
+}
+
+// ─── Broadcast delivery ─────────────────────────────────────────────────
+
+/**
+ * Records the per-recipient result of a broadcast.
+ *
+ * Written in chunks because D1 caps the number of bound parameters per
+ * statement; 4 columns × 50 rows stays well inside the limit.
+ */
+export async function recordDeliveries(
+  db: D1Database,
+  broadcastId: string,
+  rows: { userId: number; status: 'sent' | 'failed'; error?: string }[],
+): Promise<void> {
+  const ts = nowSec();
+  const CHUNK = 50;
+  for (let index = 0; index < rows.length; index += CHUNK) {
+    const slice = rows.slice(index, index + CHUNK);
+    await db.batch(
+      slice.map((row) =>
+        db
+          .prepare(
+            `INSERT INTO broadcast_delivery (broadcast_id, user_id, status, error, sent_at)
+             VALUES (?1, ?2, ?3, ?4, ?5)
+             ON CONFLICT(broadcast_id, user_id) DO UPDATE SET
+               status = excluded.status, error = excluded.error, sent_at = excluded.sent_at`,
+          )
+          .bind(broadcastId, row.userId, row.status, (row.error ?? '').slice(0, 120), ts),
+      ),
+    );
+  }
+}
+
+/** Who a given broadcast reached, and who it failed for. */
+export async function broadcastDeliveries(
+  db: D1Database,
+  broadcastId: string,
+  status?: 'sent' | 'failed',
+): Promise<DeliveryRow[]> {
+  const binds: unknown[] = [broadcastId];
+  let sql =
+    `SELECT d.user_id, d.status, d.error, d.sent_at, u.first_name, u.username ` +
+    `FROM broadcast_delivery d LEFT JOIN users u ON u.user_id = d.user_id ` +
+    `WHERE d.broadcast_id = ?1`;
+  if (status) {
+    binds.push(status);
+    sql += ` AND d.status = ?${binds.length}`;
+  }
+  sql += ' ORDER BY d.status ASC, d.sent_at ASC LIMIT 2000';
+  const res = await db.prepare(sql).bind(...binds).all<DeliveryRow>();
+  return res.results ?? [];
+}
+
+/**
+ * "Engaged" count for a broadcast: recipients who interacted with the bot
+ * after it was sent.
+ *
+ * This is NOT a read receipt — the Bot API cannot report those. It is a
+ * strictly weaker signal, and the UI labels it as such.
+ */
+export async function broadcastEngagement(
+  db: D1Database,
+  broadcastId: string,
+  sentAt: number,
+): Promise<number> {
+  const res = await db
+    .prepare(
+      `SELECT COUNT(DISTINCT a.user_id) AS c FROM activity a
+       JOIN broadcast_delivery d ON d.user_id = a.user_id AND d.broadcast_id = ?1
+       WHERE d.status = 'sent' AND a.created_at >= ?2`,
+    )
+    .bind(broadcastId, sentAt)
+    .all<{ c: number }>();
+  return num(res.results?.[0]?.c);
+}
+
+/** A single broadcast with its delivery breakdown. */
+export async function broadcastById(db: D1Database, id: string): Promise<BroadcastRow | null> {
+  const res = await db
+    .prepare(
+      'SELECT id, body, audience, total, sent, failed, status, created_at, finished_at FROM broadcasts WHERE id = ?1',
+    )
+    .bind(id)
+    .all<BroadcastRow>();
+  return res.results?.[0] ?? null;
 }

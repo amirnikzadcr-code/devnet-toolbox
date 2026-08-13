@@ -16,6 +16,7 @@ import * as SF from './security-flow.js';
 import { SEC } from './security-ui.js';
 import { consume } from '../services/ratelimit.js';
 import { getLang, setLang, touchUser, bumpCounter } from '../db/queries.js';
+import { recordActivity } from '../db/activity.js';
 import { MAX_FAVORITES, toggleFavorite } from '../db/favorites.js';
 import { logError } from '../utils/errors.js';
 import { APP } from '../config/index.js';
@@ -319,6 +320,11 @@ async function handleCommand(ctx: BotContext, text: string): Promise<void> {
   const [rawCommand = '', ...args] = text.split(/\s+/);
   const command = (rawCommand.split('@')[0] ?? '').toLowerCase();
 
+  // Only the command verb is logged — never `args`, which is user content.
+  ctx.waitUntil(
+    recordActivity(ctx.env.DB, { userId: ctx.user.id, kind: 'command', detail: command }),
+  );
+
   switch (command) {
     case '/start':
       await clearPending(ctx.env.STATE, ctx.user.id);
@@ -435,6 +441,10 @@ async function handleCallback(query: TgCallbackQuery, env: Env, waitUntil: (p: P
 
 async function dispatchCallback(ctx: BotContext, query: TgCallbackQuery, data: string): Promise<void> {
   const ack = (text?: string, alert = false): Promise<unknown> => ctx.tg.answerCallbackQuery(query.id, text, alert);
+
+  // Callback payloads are our own routes (`cat:network:0`, `tool:jwt_decode`),
+  // not user text, so the whole token is safe to record.
+  ctx.waitUntil(recordActivity(ctx.env.DB, { userId: ctx.user.id, kind: 'callback', detail: data }));
 
   if (data === UI.CB.home) {
     await clearPending(ctx.env.STATE, ctx.user.id);

@@ -23,21 +23,30 @@ import {
   verifyChallenge,
 } from './auth.js';
 import {
+  ACTIVITY_RETENTION_DAYS,
+  activityPulse,
   audit,
   banUser,
   broadcastAudience,
+  broadcastById,
+  broadcastDeliveries,
+  broadcastEngagement,
   createBroadcast,
   dailySeries,
   finishBroadcast,
   listUsers,
   overview,
+  pruneActivity,
   purgeUser,
+  recentActivity,
   recentAudit,
   recentBroadcasts,
+  recordDeliveries,
   topTools,
   unbanUser,
   userDetail,
 } from './data.js';
+import { fetchUsage } from './cloudflare.js';
 import { PanelTelegram } from './telegram.js';
 import type { AdminEnv } from './types.js';
 import {
@@ -45,8 +54,10 @@ import {
   botPage,
   broadcastPage,
   dashboardPage,
+  deliveryPage,
   errorPage,
   loginPage,
+  monitorPage,
   toolsPage,
   userDetailPage,
   usersPage,
@@ -174,12 +185,16 @@ export default {
         if (path === '/') return await dashboard(env);
         if (path === '/users') return await usersList(env, url);
         if (path === '/tools') return await toolsList(env);
+        if (path === '/monitor') return await monitorView(env, url, ctx);
         if (path === '/broadcast') return await broadcastView(env, url);
         if (path === '/bot') return await botView(env, url);
         if (path === '/audit') return html(auditPage(await recentAudit(env.DB, 200)));
 
         const detail = /^\/users\/(\d{1,20})$/.exec(path);
         if (detail) return await userView(env, Number(detail[1]), url);
+
+        const delivery = /^\/broadcast\/([A-Za-z0-9_-]{1,32})$/.exec(path);
+        if (delivery) return await deliveryView(env, delivery[1] ?? '', url);
       }
 
       if (method === 'POST') {
@@ -307,6 +322,55 @@ async function toolsList(env: AdminEnv): Promise<Response> {
   const tools = await topTools(env.DB, 200);
   const total = tools.reduce((sum, tool) => sum + tool.uses, 0);
   return html(toolsPage(tools, total));
+}
+
+/** Refresh cadence for the monitor, in seconds. Clamped to sane bounds. */
+const MONITOR_REFRESH_DEFAULT = 5;
+
+async function monitorView(env: AdminEnv, url: URL, ctx: ExecCtxLike): Promise<Response> {
+  const kind = url.searchParams.get('kind') ?? '';
+  const allowed = new Set(['tool', 'command', 'callback', 'input', 'media']);
+  const refresh = Math.min(
+    Math.max(Number(url.searchParams.get('refresh')) || MONITOR_REFRESH_DEFAULT, 3),
+    60,
+  );
+
+  const [events, pulse, usage] = await Promise.all([
+    recentActivity(env.DB, { limit: 60, ...(allowed.has(kind) ? { kind } : {}) }),
+    activityPulse(env.DB),
+    fetchUsage(env.CF_ANALYTICS_TOKEN, env.CF_ACCOUNT_ID),
+  ]);
+
+  // Retention is enforced opportunistically on view rather than by a cron, so
+  // the panel needs no extra trigger and old rows still cannot accumulate.
+  ctx.waitUntil(
+    pruneActivity(env.DB).catch((error: unknown) =>
+      console.error('prune failed', error instanceof Error ? error.message : String(error)),
+    ),
+  );
+
+  return html(
+    monitorPage(events, pulse, usage, {
+      kind: allowed.has(kind) ? kind : '',
+      refresh,
+      retentionDays: ACTIVITY_RETENTION_DAYS,
+    }),
+  );
+}
+
+async function deliveryView(env: AdminEnv, id: string, url: URL): Promise<Response> {
+  const broadcast = await broadcastById(env.DB, id);
+  if (!broadcast) return html(errorPage(404, 'این ارسال یافت نشد.'), 404);
+
+  const raw = url.searchParams.get('status') ?? '';
+  const status = raw === 'sent' || raw === 'failed' ? raw : undefined;
+
+  const [rows, engaged] = await Promise.all([
+    broadcastDeliveries(env.DB, id, status),
+    broadcastEngagement(env.DB, id, broadcast.created_at),
+  ]);
+
+  return html(deliveryPage(broadcast, rows, engaged, status ?? ''));
 }
 
 async function broadcastView(env: AdminEnv, url: URL): Promise<Response> {
@@ -463,13 +527,30 @@ async function runBroadcast(env: AdminEnv, id: string, body: string, recipients:
       const results = await Promise.all(slice.map((chatId) => telegram.sendMessage(chatId, body)));
 
       let retryAfter = 0;
-      for (const result of results) {
-        if (result.ok) sent += 1;
-        else {
+      // Per-recipient outcomes, so the panel can show exactly who received the
+      // message and why it failed for the rest.
+      const outcomes: { userId: number; status: 'sent' | 'failed'; error?: string }[] = [];
+
+      results.forEach((result, offset) => {
+        const userId = slice[offset] as number;
+        if (result.ok) {
+          sent += 1;
+          outcomes.push({ userId, status: 'sent' });
+        } else {
           failed += 1;
           retryAfter = Math.max(retryAfter, result.parameters?.retry_after ?? 0);
+          outcomes.push({
+            userId,
+            status: 'failed',
+            // Telegram's own diagnostic, e.g. "bot was blocked by the user".
+            error: result.description ?? 'unknown error',
+          });
         }
-      }
+      });
+
+      await recordDeliveries(env.DB, id, outcomes).catch((error: unknown) =>
+        console.error('delivery log failed', error instanceof Error ? error.message : String(error)),
+      );
 
       if (index + BATCH < recipients.length) {
         await new Promise((resolve) => setTimeout(resolve, retryAfter > 0 ? retryAfter * 1000 : 1100));

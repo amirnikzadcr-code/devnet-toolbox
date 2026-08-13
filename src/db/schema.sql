@@ -130,3 +130,40 @@ CREATE TABLE IF NOT EXISTS broadcasts (
 );
 
 CREATE INDEX IF NOT EXISTS idx_broadcasts_date ON broadcasts (created_at DESC);
+
+-- ─── Live activity feed (admin monitor) ─────────────────────────────────
+-- Metadata only, by explicit decision: who did what, when, and whether it
+-- worked. The message TEXT is never written here — only a command name, a
+-- tool id, or a coarse kind such as 'photo'. `detail` is a short, bounded
+-- label (e.g. a tool id or callback route), never user-supplied free text.
+--
+-- Rows are pruned to ACTIVITY_RETENTION_DAYS by the panel so the table stays
+-- small and personal data is not kept indefinitely.
+CREATE TABLE IF NOT EXISTS activity (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id    INTEGER NOT NULL,
+  kind       TEXT    NOT NULL,          -- command | tool | callback | input | media
+  detail     TEXT    NOT NULL DEFAULT '',
+  ok         INTEGER NOT NULL DEFAULT 1,
+  ms         INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_activity_date ON activity (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_activity_user ON activity (user_id, created_at DESC);
+
+-- ─── Per-recipient broadcast delivery ───────────────────────────────────
+-- Telegram's Bot API has no read receipts, so the honest signal is delivery:
+-- whether sendMessage was accepted for each recipient, and if not, why.
+-- `error` holds Telegram's short description (e.g. "bot was blocked by the
+-- user"), which is a diagnostic string, not user content.
+CREATE TABLE IF NOT EXISTS broadcast_delivery (
+  broadcast_id TEXT    NOT NULL,
+  user_id      INTEGER NOT NULL,
+  status       TEXT    NOT NULL CHECK (status IN ('sent','failed')),
+  error        TEXT    NOT NULL DEFAULT '',
+  sent_at      INTEGER NOT NULL,
+  PRIMARY KEY (broadcast_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_delivery_bc ON broadcast_delivery (broadcast_id, status);

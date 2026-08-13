@@ -9,6 +9,7 @@ import { assertMaxLength, assertNotEmpty } from '../utils/validate.js';
 import { formatBytes, normalizeInput, truncate } from '../utils/text.js';
 import { consume, consumeNetwork } from '../services/ratelimit.js';
 import { bumpCounter, recordToolRun } from '../db/queries.js';
+import { recordActivity } from '../db/activity.js';
 import * as P from './pages.js';
 import * as UI from './ui.js';
 
@@ -25,6 +26,7 @@ export interface RunOutcome extends Screen {
  */
 export async function runTool(ctx: BotContext, tool: ToolDefinition, rawInput: string): Promise<RunOutcome> {
   const lang = ctx.lang;
+  const startedAt = Date.now();
 
   const toolBudget = await consume(ctx.env.STATE, 'tool', ctx.user.id);
   if (!toolBudget.allowed) {
@@ -68,6 +70,15 @@ export async function runTool(ctx: BotContext, tool: ToolDefinition, rawInput: s
         logError('runner.recordToolRun', error, { tool: tool.id }),
       ),
     );
+    ctx.waitUntil(
+      recordActivity(ctx.env.DB, {
+        userId: ctx.user.id,
+        kind: 'tool',
+        detail: tool.id,
+        ok: true,
+        ms: Date.now() - startedAt,
+      }),
+    );
 
     return {
       ok: true,
@@ -82,6 +93,15 @@ export async function runTool(ctx: BotContext, tool: ToolDefinition, rawInput: s
       logError('runner.unexpected', error, { tool: tool.id });
       ctx.waitUntil(bumpCounter(ctx.env.DB, 'errors'));
     }
+    ctx.waitUntil(
+      recordActivity(ctx.env.DB, {
+        userId: ctx.user.id,
+        kind: 'tool',
+        detail: tool.id,
+        ok: false,
+        ms: Date.now() - startedAt,
+      }),
+    );
     return {
       ok: false,
       text: `${P.errorPage(lang, message)}\n\n${t(lang, 'tool_usage_label')}\n${lang === 'fa' ? tool.usage.fa : tool.usage.en}`,
@@ -111,6 +131,7 @@ export async function runFileTool(
 ): Promise<RunOutcome> {
   const lang = ctx.lang;
   const spec = tool.file as FileToolSpec;
+  const startedAt = Date.now();
 
   const budget = await consume(ctx.env.STATE, 'tool', ctx.user.id);
   if (!budget.allowed) {
@@ -207,6 +228,15 @@ export async function runFileTool(
         logError('runner.recordToolRun', error, { tool: tool.id }),
       ),
     );
+    ctx.waitUntil(
+      recordActivity(ctx.env.DB, {
+        userId: ctx.user.id,
+        kind: 'tool',
+        detail: tool.id,
+        ok: true,
+        ms: Date.now() - startedAt,
+      }),
+    );
 
     return {
       ok: true,
@@ -221,6 +251,15 @@ export async function runFileTool(
       logError('runner.file.unexpected', error, { tool: tool.id });
       ctx.waitUntil(bumpCounter(ctx.env.DB, 'errors'));
     }
+    ctx.waitUntil(
+      recordActivity(ctx.env.DB, {
+        userId: ctx.user.id,
+        kind: 'tool',
+        detail: tool.id,
+        ok: false,
+        ms: Date.now() - startedAt,
+      }),
+    );
     return {
       ok: false,
       text: `${P.errorPage(lang, message)}\n\n${t(lang, 'tool_usage_label')}\n${pick(lang, tool.usage)}`,

@@ -8,7 +8,17 @@
  *
  * Direction is RTL and all copy is Persian, matching the bot.
  */
-import type { AuditRow, BroadcastRow, DailyPoint, OverviewStats, ToolRow, UserRow } from './types.js';
+import type {
+  ActivityRow,
+  AuditRow,
+  BroadcastRow,
+  CloudflareUsage,
+  DailyPoint,
+  DeliveryRow,
+  OverviewStats,
+  ToolRow,
+  UserRow,
+} from './types.js';
 
 /** Every value interpolated into HTML passes through here. */
 export function esc(value: unknown): string {
@@ -110,6 +120,9 @@ tbody tr:last-child td{border-bottom:none}
 .b-mute{color:var(--muted);border-color:var(--line);background:var(--panel2)}
 .bar{height:7px;border-radius:5px;background:var(--panel2);overflow:hidden}
 .bar>i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+.bar>i.q-ok{background:linear-gradient(90deg,#34d399,#10b981)}
+.bar>i.q-warn{background:linear-gradient(90deg,#fbbf24,#f59e0b)}
+.bar>i.q-bad{background:linear-gradient(90deg,#f87171,#dc2626)}
 
 /* ── Forms ── */
 label{display:block;font-size:13px;color:var(--muted);margin:12px 0 6px}
@@ -153,9 +166,15 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:34px}
 @media(max-width:640px){.wrap{padding:14px 12px 40px}.stat .value{font-size:22px}nav{width:100%;margin:0}}
 `;
 
-export function layout(title: string, active: string, body: string): string {
+export function layout(
+  title: string,
+  active: string,
+  body: string,
+  options: { refreshSeconds?: number } = {},
+): string {
   const tabs: [string, string, string][] = [
     ['/', 'dash', '📊 داشبورد'],
+    ['/monitor', 'monitor', '📡 مانیتور زنده'],
     ['/users', 'users', '👥 کاربران'],
     ['/tools', 'tools', '🧰 ابزارها'],
     ['/broadcast', 'broadcast', '📣 پیام همگانی'],
@@ -171,6 +190,7 @@ export function layout(title: string, active: string, body: string): string {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
+${options.refreshSeconds ? `<meta http-equiv="refresh" content="${options.refreshSeconds}">` : ''}
 <title>${esc(title)} — پنل مدیریت</title>
 <style>${STYLE}</style>
 </head><body>
@@ -497,10 +517,12 @@ export function broadcastPage(
             : '<span class="badge b-bad">ناموفق</span>';
       const preview = item.body.length > 60 ? `${item.body.slice(0, 60)}…` : item.body;
       return `<tr><td class="muted">${relTime(item.created_at)}</td>
-        <td>${esc(preview)}</td><td><span class="badge b-mute">${esc(item.audience)}</span></td>
+        <td><a href="/broadcast/${esc(item.id)}">${esc(preview)}</a></td>
+        <td><span class="badge b-mute">${esc(item.audience)}</span></td>
         <td>${faNum(item.sent)} / ${faNum(item.total)}</td>
         <td>${item.failed > 0 ? `<span class="badge b-bad">${faNum(item.failed)}</span>` : '۰'}</td>
-        <td>${badge}</td></tr>`;
+        <td>${badge}</td>
+        <td><a class="btn ghost" href="/broadcast/${esc(item.id)}">گیرندگان</a></td></tr>`;
     })
     .join('');
 
@@ -530,8 +552,8 @@ export function broadcastPage(
       </div>
       <div class="card"><h2>🗂️ تاریخچه ارسال‌ها</h2>
         <div class="tscroll"><table>
-          <thead><tr><th>زمان</th><th>متن</th><th>مخاطب</th><th>ارسال‌شده</th><th>ناموفق</th><th>وضعیت</th></tr></thead>
-          <tbody>${rows || '<tr><td colspan="6" class="muted">هنوز پیامی ارسال نشده</td></tr>'}</tbody>
+          <thead><tr><th>زمان</th><th>متن</th><th>مخاطب</th><th>ارسال‌شده</th><th>ناموفق</th><th>وضعیت</th><th></th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="7" class="muted">هنوز پیامی ارسال نشده</td></tr>'}</tbody>
         </table></div>
       </div>
     </div>`,
@@ -645,4 +667,203 @@ export function errorPage(code: number, message: string): string {
 <body><div class="login-shell"><div class="login-card" style="text-align:center">
 <div class="logo">⚠️</div><h1>${code}</h1><p class="sub">${esc(message)}</p>
 <a class="btn" href="/">بازگشت به داشبورد</a></div></div></body></html>`;
+}
+
+// ─── Live monitor ────────────────────────────────────────────────────────
+
+/** Human label + colour for each activity kind. */
+const KIND_META: Record<string, { label: string; cls: string }> = {
+  command: { label: 'دستور', cls: 'b-mute' },
+  tool: { label: 'ابزار', cls: 'b-ok' },
+  callback: { label: 'ناوبری', cls: 'b-mute' },
+  input: { label: 'ورودی', cls: 'b-warn' },
+  media: { label: 'فایل', cls: 'b-warn' },
+};
+
+function userCell(id: number, first?: string | null, username?: string | null): string {
+  const name = (first ?? '').trim() || `کاربر ${faNum(id)}`;
+  const handle = username ? ` <span class="muted mono">@${esc(username)}</span>` : '';
+  return `<a href="/users/${id}">${esc(name)}</a>${handle}`;
+}
+
+/** A usage bar with its numeric readout. */
+function quotaBar(label: string, used: number, limit: number, note: string): string {
+  const pct = limit > 0 ? Math.min(100, (used / limit) * 100) : 0;
+  const cls = pct >= 90 ? 'bad' : pct >= 70 ? 'warn' : 'ok';
+  return `<div style="margin-bottom:14px">
+    <div class="row" style="justify-content:space-between;margin-bottom:5px">
+      <span style="font-size:13px">${esc(label)}</span>
+      <span class="muted" style="font-size:12.5px">${faNum(used)} از ${faNum(limit)} · ${faNum(Math.round(pct))}٪</span>
+    </div>
+    <div class="bar"><i class="q-${cls}" style="width:${pct.toFixed(1)}%"></i></div>
+    <div class="hint" style="margin-top:4px">${esc(note)}</div>
+  </div>`;
+}
+
+export function monitorPage(
+  events: ActivityRow[],
+  pulse: { lastMin: number; last5Min: number; lastHour: number; errorsHour: number; activeNow: number },
+  usage: CloudflareUsage,
+  options: { kind: string; refresh: number; retentionDays: number },
+): string {
+  const rows = events
+    .map((event) => {
+      const meta = KIND_META[event.kind] ?? { label: event.kind, cls: 'b-mute' };
+      const status =
+        event.ok === 0 ? '<span class="badge b-bad">ناموفق</span>' : '<span class="badge b-ok">موفق</span>';
+      const timing = event.ms > 0 ? `<span class="muted">${faNum(event.ms)}ms</span>` : '<span class="muted">—</span>';
+      return `<tr>
+        <td class="muted" title="${esc(faDate(event.created_at))}">${relTime(event.created_at)}</td>
+        <td>${userCell(event.user_id, event.first_name, event.username)}</td>
+        <td><span class="badge ${meta.cls}">${esc(meta.label)}</span></td>
+        <td class="mono">${esc(event.detail || '—')}</td>
+        <td>${status}</td>
+        <td>${timing}</td>
+      </tr>`;
+    })
+    .join('');
+
+  const filters = [
+    ['', 'همه'],
+    ['tool', 'ابزارها'],
+    ['command', 'دستورها'],
+    ['callback', 'ناوبری'],
+  ]
+    .map(
+      ([value, label]) =>
+        `<a class="btn ${options.kind === value ? '' : 'ghost'}" href="/monitor${value ? `?kind=${value}` : ''}">${esc(String(label))}</a>`,
+    )
+    .join(' ');
+
+  const scriptRows = usage.scripts
+    .map(
+      (script) =>
+        `<tr><td class="mono">${esc(script.name)}</td><td>${faNum(script.requests)}</td>
+         <td>${script.errors > 0 ? `<span class="badge b-bad">${faNum(script.errors)}</span>` : '۰'}</td></tr>`,
+    )
+    .join('');
+
+  const usageCard = usage.available
+    ? `${quotaBar('درخواست‌های Worker (امروز)', usage.workers.requests, usage.limits.workerRequests, 'سقف روزانه پلن رایگان')}
+       ${quotaBar('خواندن از D1 (امروز)', usage.d1.readQueries, usage.limits.d1Reads, 'سقف روزانه پلن رایگان')}
+       ${quotaBar('نوشتن در D1 (امروز)', usage.d1.writeQueries, usage.limits.d1Writes, 'سقف روزانه پلن رایگان')}
+       <div class="sep"></div>
+       <div class="tscroll"><table>
+         <thead><tr><th>Worker</th><th>درخواست</th><th>خطا</th></tr></thead>
+         <tbody>${scriptRows || '<tr><td colspan="3" class="muted">امروز درخواستی ثبت نشده</td></tr>'}</tbody>
+       </table></div>
+       <p class="hint">Subrequestهای امروز: ${faNum(usage.workers.subrequests)} · ارقام از Cloudflare Analytics و بر مبنای روز UTC است.</p>`
+    : `<div class="msg m-info">${esc(usage.reason ?? 'اطلاعات مصرف در دسترس نیست.')}</div>
+       <p class="hint">
+         عمداً عدد صفر نشان داده نمی‌شود: «نتوانستیم بپرسیم» با «مصرفی نبوده» یکی نیست.
+         برای فعال‌سازی، یک API Token با دسترسی <span class="mono">Account Analytics: Read</span> بسازید و
+         آن را به‌صورت Secret با نام <span class="mono">CF_ANALYTICS_TOKEN</span> به Worker پنل اضافه کنید.
+       </p>`;
+
+  return layout(
+    'مانیتور زنده',
+    'monitor',
+    `<div class="grid g4" style="margin-bottom:14px">
+      ${statCard('رویداد در دقیقهٔ اخیر', faNum(pulse.lastMin), 'ضربان لحظه‌ای', true)}
+      ${statCard('کاربر فعال (۵ دقیقه)', faNum(pulse.activeNow), 'کاربران یکتا')}
+      ${statCard('رویداد در ساعت اخیر', faNum(pulse.lastHour), `${faNum(pulse.last5Min)} در ۵ دقیقهٔ اخیر`)}
+      ${statCard('خطا در ساعت اخیر', faNum(pulse.errorsHour), pulse.errorsHour > 0 ? 'نیازمند بررسی' : 'بدون خطا')}
+    </div>
+
+    <div class="card" style="margin-bottom:14px">
+      <h2>☁️ مصرف Cloudflare</h2>
+      ${usageCard}
+    </div>
+
+    <div class="card">
+      <h2>📡 جریان زندهٔ فعالیت
+        <span class="badge b-ok" style="margin-inline-start:auto">هر ${faNum(options.refresh)} ثانیه تازه می‌شود</span>
+      </h2>
+      <div class="row" style="margin-bottom:12px">${filters}</div>
+      <div class="tscroll"><table>
+        <thead><tr><th>زمان</th><th>کاربر</th><th>نوع</th><th>شناسه</th><th>نتیجه</th><th>مدت</th></tr></thead>
+        <tbody>${rows || '<tr><td colspan="6" class="muted">هنوز رویدادی ثبت نشده است</td></tr>'}</tbody>
+      </table></div>
+      <p class="hint">
+        🔒 فقط فراداده ثبت می‌شود: چه کسی، چه ابزاری، چه زمانی و با چه نتیجه‌ای.
+        <b>متن پیام‌ها و ورودی ابزارها هرگز ذخیره نمی‌شود</b> — چون کاربران ممکن است توکن، رمز یا اطلاعات شخصی وارد کنند.
+        رویدادها پس از ${faNum(options.retentionDays)} روز خودکار حذف می‌شوند.
+      </p>
+    </div>`,
+    { refreshSeconds: options.refresh },
+  );
+}
+
+// ─── Broadcast delivery detail ───────────────────────────────────────────
+
+export function deliveryPage(
+  broadcast: BroadcastRow,
+  rows: DeliveryRow[],
+  engaged: number,
+  filter: string,
+): string {
+  const list = rows
+    .map((row) => {
+      const badge =
+        row.status === 'sent'
+          ? '<span class="badge b-ok">تحویل شد</span>'
+          : '<span class="badge b-bad">ناموفق</span>';
+      return `<tr>
+        <td>${userCell(row.user_id, row.first_name, row.username)}</td>
+        <td>${badge}</td>
+        <td class="muted">${row.error ? esc(row.error) : '—'}</td>
+        <td class="muted">${relTime(row.sent_at)}</td>
+      </tr>`;
+    })
+    .join('');
+
+  const tabs = [
+    ['', 'همه'],
+    ['sent', 'تحویل‌شده'],
+    ['failed', 'ناموفق'],
+  ]
+    .map(
+      ([value, label]) =>
+        `<a class="btn ${filter === value ? '' : 'ghost'}" href="/broadcast/${esc(broadcast.id)}${value ? `?status=${value}` : ''}">${esc(String(label))}</a>`,
+    )
+    .join(' ');
+
+  const pct = broadcast.total > 0 ? Math.round((broadcast.sent / broadcast.total) * 100) : 0;
+
+  return layout(
+    'جزئیات ارسال',
+    'broadcast',
+    `<div class="row" style="margin-bottom:14px">
+       <a class="btn ghost" href="/broadcast">→ بازگشت به پیام همگانی</a>
+     </div>
+
+    <div class="grid g4" style="margin-bottom:14px">
+      ${statCard('گیرندگان', faNum(broadcast.total), 'مخاطب انتخاب‌شده')}
+      ${statCard('تحویل‌شده', faNum(broadcast.sent), `${faNum(pct)}٪ از کل`, true)}
+      ${statCard('ناموفق', faNum(broadcast.failed), broadcast.failed > 0 ? 'ربات بلاک یا حساب حذف شده' : 'بدون خطا')}
+      ${statCard('تعامل پس از ارسال', faNum(engaged), 'با ربات کار کردند')}
+    </div>
+
+    <div class="card" style="margin-bottom:14px">
+      <h2>📄 متن ارسال‌شده</h2>
+      <div style="background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:14px;white-space:pre-wrap;font-size:13.5px">${esc(broadcast.body)}</div>
+      <p class="hint">ارسال ${relTime(broadcast.created_at)} · مخاطب: ${esc(broadcast.audience)}</p>
+    </div>
+
+    <div class="msg m-info">
+      <b>دربارهٔ «سین»:</b> Telegram Bot API اصلاً امکان خواندن تیک دوم را به ربات‌ها نمی‌دهد؛
+      هیچ متدی برای read receipt وجود ندارد. بنابراین این صفحه دو چیز <i>واقعی</i> را نشان می‌دهد:
+      <b>تحویل</b> (تلگرام پیام را برای کاربر پذیرفت) و <b>تعامل پس از ارسال</b>
+      (کاربر بعد از دریافت پیام با ربات کار کرده است). این دومی نشانهٔ قوی توجه است، اما «سین» نیست و ما آن را «سین» نمی‌نامیم.
+    </div>
+
+    <div class="card">
+      <h2>👥 وضعیت تک‌تک گیرندگان</h2>
+      <div class="row" style="margin-bottom:12px">${tabs}</div>
+      <div class="tscroll"><table>
+        <thead><tr><th>کاربر</th><th>وضعیت</th><th>توضیح خطا</th><th>زمان</th></tr></thead>
+        <tbody>${list || '<tr><td colspan="4" class="muted">رکوردی برای این ارسال ثبت نشده است</td></tr>'}</tbody>
+      </table></div>
+    </div>`,
+  );
 }
