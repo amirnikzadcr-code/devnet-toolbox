@@ -75,10 +75,13 @@ export async function verifyInitData(raw: string, botToken: string): Promise<Aut
   const providedHash = params.get('hash');
   if (!providedHash || !/^[a-f0-9]{64}$/i.test(providedHash)) throw new AuthError('bad hash');
 
+  // Only `hash` is removed. Telegram signs *every* other field it sends,
+  // including `signature` — that field is excluded only from the separate
+  // Ed25519 third-party check, never from this HMAC one. Dropping it here
+  // silently broke every real launch: current clients always send
+  // `signature`, so the check string was missing a line the client had
+  // included and the digests could never match.
   params.delete('hash');
-  // `signature` belongs to the newer Ed25519 third-party flow and is excluded
-  // from the HMAC check string.
-  params.delete('signature');
 
   const checkString = [...params.entries()]
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))

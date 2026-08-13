@@ -59,15 +59,53 @@ describe('verifyInitData — valid', () => {
     expect(user.languageCode).toBe('fa');
   });
 
-  it('ignores a `signature` field when computing the check string', async () => {
-    // Telegram's third-party Ed25519 flow adds `signature`, which must be
-    // excluded from the HMAC input or every launch from a new client fails.
-    const params = new URLSearchParams(
-      await sign({ auth_date: String(nowSec()), user: JSON.stringify(baseUser) }),
-    );
-    params.set('signature', 'abc123_ed25519_signature');
-    const user = await verifyInitData(params.toString(), TOKEN);
+  it('accepts a real launch payload, where `signature` is part of the signed data', async () => {
+    // Regression: production rejected every genuine launch with "signature
+    // mismatch". Current Telegram clients always send a `signature` field,
+    // and Telegram signs every field except `hash` — `signature` included.
+    // We were deleting it before hashing, so our check string was one line
+    // short of the client's and the digests could never agree. It is only
+    // the separate Ed25519 third-party check that excludes `signature`.
+    const data = await sign({
+      auth_date: String(nowSec()),
+      chat_instance: '-3788442885511357000',
+      chat_type: 'sender',
+      signature: 'V3RyxhCJ_qk9dxT8n2XKp0LmQwEr4TyUiOpAsDfGhJkL',
+      user: JSON.stringify(baseUser),
+    });
+    const user = await verifyInitData(data, TOKEN);
     expect(user.id).toBe(baseUser.id);
+  });
+
+  it('still rejects a payload whose `signature` was tampered with after signing', async () => {
+    // The flip side: because `signature` is signed, editing it must invalidate
+    // the payload rather than being quietly ignored.
+    const params = new URLSearchParams(
+      await sign({
+        auth_date: String(nowSec()),
+        signature: 'original_signature_value',
+        user: JSON.stringify(baseUser),
+      }),
+    );
+    params.set('signature', 'swapped_signature_value');
+    await expect(verifyInitData(params.toString(), TOKEN)).rejects.toThrowError(
+      /signature mismatch/,
+    );
+  });
+
+  it('accepts the full field set a real client sends', async () => {
+    const data = await sign({
+      auth_date: String(nowSec()),
+      chat_instance: '-3788442885511357000',
+      chat_type: 'private',
+      hash_type: 'unused_but_signed',
+      query_id: 'AAHdF6IQAAAAAN0XohDhrOrc',
+      signature: 'V3RyxhCJ_qk9dxT8n2XKp0LmQwEr4TyUiOpAsDfGhJkL',
+      user: JSON.stringify(baseUser),
+    });
+    const user = await verifyInitData(data, TOKEN);
+    expect(user.id).toBe(baseUser.id);
+    expect(user.firstName).toBe('Amir');
   });
 
   it('handles unicode names without corrupting the signature', async () => {
