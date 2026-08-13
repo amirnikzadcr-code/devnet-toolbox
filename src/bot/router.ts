@@ -2,11 +2,11 @@ import type { Env, ExecCtxLike } from '../types/env.js';
 import type { TgCallbackQuery, TgMessage, TgUpdate, TgUser } from '../types/telegram.js';
 import type { BotContext } from './context.js';
 import type { Screen } from './screens.js';
-import type { ToolCategory, ToolDefinition } from '../tools/types.js';
+import type { EverydayGroup, ToolCategory, ToolDefinition } from '../tools/types.js';
 import type { ScanType } from '../security/types.js';
 import { backgroundRunner, createTelegram } from './context.js';
 import { isLang, t, type Lang } from '../localization/index.js';
-import { getTool, CATEGORIES } from '../tools/registry.js';
+import { getTool, CATEGORIES, EVERYDAY_GROUPS } from '../tools/registry.js';
 import * as S from './screens.js';
 import * as P from './pages.js';
 import * as UI from './ui.js';
@@ -16,11 +16,13 @@ import * as SF from './security-flow.js';
 import { SEC } from './security-ui.js';
 import { consume } from '../services/ratelimit.js';
 import { getLang, setLang, touchUser, bumpCounter } from '../db/queries.js';
+import { MAX_FAVORITES, toggleFavorite } from '../db/favorites.js';
 import { logError } from '../utils/errors.js';
 import { APP } from '../config/index.js';
 import { escapeHtml, mono, DIVIDER } from '../utils/text.js';
 
 const VALID_CATEGORIES = new Set<string>(CATEGORIES.map((category) => category.id));
+const VALID_GROUPS = new Set<string>(EVERYDAY_GROUPS.map((group) => group.id));
 
 async function resolveLang(env: Env, user: TgUser): Promise<Lang> {
   const cached = await readCachedLang(env.STATE, user.id);
@@ -293,6 +295,7 @@ const KNOWN_COMMANDS = new Set([
   '/start', '/menu', '/home', '/tools', '/toolbox', '/quick', '/profile',
   '/stats', '/settings', '/lang', '/help', '/about', '/id', '/version',
   '/cancel', '/tool', '/security', '/scan', '/scans',
+  '/favorites', '/fav', '/everyday',
 ]);
 
 /**
@@ -325,6 +328,13 @@ async function handleCommand(ctx: BotContext, text: string): Promise<void> {
       return;
     case '/quick':
       await send(ctx, S.quickScreen(ctx, 1));
+      return;
+    case '/everyday':
+      await send(ctx, S.categoryScreen(ctx, 'everyday', 1));
+      return;
+    case '/favorites':
+    case '/fav':
+      await send(ctx, await S.favoritesScreen(ctx, 1));
       return;
     case '/profile':
       await send(ctx, await S.profileScreen(ctx));
@@ -506,6 +516,45 @@ async function dispatchCallback(ctx: BotContext, query: TgCallbackQuery, data: s
     return;
   }
 
+  // ── 🧰 Everyday Tools sub-sections & ⭐ Favorites (Phase 4) ─────────────
+  if (data.startsWith('grp:')) {
+    const [, id = '', pageRaw = '1'] = data.split(':');
+    const page = Number.parseInt(pageRaw, 10) || 1;
+    if (!VALID_GROUPS.has(id)) {
+      await ack(t(ctx.lang, 'err_unknown_action'), true);
+      return;
+    }
+    await Promise.all([edit(ctx, S.everydayGroupScreen(ctx, id as EverydayGroup, page)), ack()]);
+    return;
+  }
+  if (data === UI.CB.favorites || data.startsWith('fav:')) {
+    const page = data === UI.CB.favorites ? 1 : Number.parseInt(data.slice(4), 10) || 1;
+    await ack();
+    await edit(ctx, await S.favoritesScreen(ctx, page));
+    return;
+  }
+  if (data.startsWith('favt:')) {
+    const id = data.slice(5);
+    const tool = getTool(id);
+    if (!tool) {
+      await ack(t(ctx.lang, 'err_unknown_tool'), true);
+      return;
+    }
+    const result = await toggleFavorite(ctx.env.DB, ctx.user.id, id);
+    if (result.status === 'full') {
+      await ack(t(ctx.lang, 'fav_full', { max: MAX_FAVORITES }), true);
+      return;
+    }
+    if (result.status === 'error') {
+      await ack(t(ctx.lang, 'fav_error'), true);
+      return;
+    }
+    await ack(t(ctx.lang, result.status === 'added' ? 'fav_added' : 'fav_removed'));
+    const screen = await S.toolScreenWithFavorite(ctx, id);
+    if (screen) await edit(ctx, screen);
+    return;
+  }
+
   if (data.startsWith('cat:')) {
     const [, id = '', pageRaw = '1'] = data.split(':');
     const page = Number.parseInt(pageRaw, 10) || 1;
@@ -523,12 +572,18 @@ async function dispatchCallback(ctx: BotContext, query: TgCallbackQuery, data: s
 
   if (data.startsWith('tool:')) {
     const id = data.slice(5);
-    const screen = S.toolScreen(ctx, id);
-    if (!screen) {
+    if (!getTool(id)) {
       await ack(t(ctx.lang, 'err_unknown_tool'), true);
       return;
     }
     await clearPending(ctx.env.STATE, ctx.user.id);
+    // The ⭐ state comes from D1; if that lookup fails the page still renders,
+    // just without the star button.
+    const screen = (await S.toolScreenWithFavorite(ctx, id)) ?? S.toolScreen(ctx, id);
+    if (!screen) {
+      await ack(t(ctx.lang, 'err_unknown_tool'), true);
+      return;
+    }
     await Promise.all([edit(ctx, screen), ack()]);
     return;
   }
@@ -593,6 +648,8 @@ export const BOT_COMMANDS = [
   { command: 'start', description: '🏠 Home / خانه' },
   { command: 'tools', description: '🧰 Toolbox / جعبه‌ابزار' },
   { command: 'quick', description: '⚡ Quick tools / ابزار سریع' },
+  { command: 'everyday', description: '🧰 Everyday tools / ابزارهای روزمره' },
+  { command: 'favorites', description: '⭐ My favorites / علاقه‌مندی‌ها' },
   { command: 'security', description: '🛡️ Advanced Security / امنیت پیشرفته' },
   { command: 'scans', description: '📊 Scan history / تاریخچه اسکن' },
   { command: 'profile', description: '👤 Profile / پروفایل' },

@@ -80,6 +80,8 @@ export interface D1Log {
 export class FakeD1 {
   public log: D1Log[] = [];
   public failNext = false;
+  /** Fail every statement matching this pattern, e.g. /favorites/i. */
+  public failOn: RegExp | null = null;
   private responses = new Map<RegExp, unknown>();
 
   /** Register a canned first()/all() result for statements matching `pattern`. */
@@ -112,6 +114,9 @@ export class FakeD1 {
 
   record(sql: string, params: unknown[]): unknown {
     this.log.push({ sql, params });
+    if (this.failOn?.test(sql) === true) {
+      throw new Error('D1_ERROR: simulated failure');
+    }
     if (this.failNext) {
       this.failNext = false;
       throw new Error('D1_ERROR: simulated failure');

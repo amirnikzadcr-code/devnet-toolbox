@@ -179,6 +179,29 @@ export const fa = {
   sec_dashboard_empty: 'داده‌ای برای نمایش وجود ندارد.',
   sec_recent_findings: '🔎 <b>آخرین اسکن‌ها</b>',
 
+  // ─── Phase 4: 🧰 Everyday Tools ──────────────────────────
+  cat_everyday: '🧰 ابزارهای روزمره',
+  everyday_group_calculators: '📐 ماشین‌حساب‌ها',
+  everyday_group_documents: '📄 اسناد',
+  everyday_group_images: '🖼️ تصاویر',
+  everyday_group_media: '🎵 مدیا',
+  everyday_group_productivity: '🧠 بهره‌وری',
+  everyday_group_information: '🌍 اطلاعات',
+  everyday_group_favorites: '⭐ علاقه‌مندی‌ها',
+
+  // Favourites (requirement 50)
+  btn_favorites: '⭐ علاقه‌مندی‌های من',
+  btn_fav_add: '⭐ افزودن به علاقه‌مندی‌ها',
+  btn_fav_remove: '💔 حذف از علاقه‌مندی‌ها',
+  fav_title: '⭐ <b>علاقه‌مندی‌های من</b>',
+  fav_empty:
+    'هنوز ابزاری را ستاره نکرده‌اید.\nهر ابزار را باز کنید و دکمه‌ی «⭐ افزودن به علاقه‌مندی‌ها» را بزنید تا اینجا ظاهر شود.',
+  fav_body: '{count} ابزار ذخیره شده • صفحه {page} از {pages}',
+  fav_added: '⭐ به علاقه‌مندی‌ها اضافه شد',
+  fav_removed: '💔 از علاقه‌مندی‌ها حذف شد',
+  fav_full: 'ظرفیت علاقه‌مندی‌ها پر است (حداکثر {max} ابزار). ابتدا یکی را حذف کنید.',
+  fav_error: 'ذخیره‌ی علاقه‌مندی ممکن نشد. لطفاً دوباره تلاش کنید.',
+
   // ─── Errors / system ────────────────────────────────────
   err_title: '❌ <b>عملیات انجام نشد.</b>',
   err_generic: 'خطای غیرمنتظره‌ای رخ داد. لطفاً بعداً دوباره تلاش کنید.',

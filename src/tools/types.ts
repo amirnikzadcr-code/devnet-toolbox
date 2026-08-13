@@ -1,6 +1,12 @@
 import type { Lang } from '../localization/index.js';
 
-export type ToolCategory = 'programming' | 'network' | 'security' | 'utilities';
+export type ToolCategory = 'programming' | 'network' | 'security' | 'utilities' | 'everyday';
+
+/**
+ * Sub-sections inside 🧰 Everyday Tools. The category page groups tools under
+ * these headings instead of showing one flat 40-item list.
+ */
+export type EverydayGroup = 'calculators' | 'documents' | 'images' | 'media' | 'productivity' | 'information';
 
 export interface Bilingual {
   fa: string;
@@ -73,6 +79,8 @@ export interface FileToolSpec {
 export interface ToolDefinition {
   id: string;
   category: ToolCategory;
+  /** Sub-section within 🧰 Everyday Tools; required for that category only. */
+  group?: EverydayGroup;
   icon: string;
   /** Shown in Quick Tools shelf. */
   quick?: boolean;

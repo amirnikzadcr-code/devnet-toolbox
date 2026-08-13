@@ -1,4 +1,4 @@
-import type { ToolCategory, ToolDefinition } from './types.js';
+import type { EverydayGroup, ToolCategory, ToolDefinition } from './types.js';
 import type { Lang } from '../localization/index.js';
 import { PAGINATION } from '../config/index.js';
 
@@ -44,6 +44,10 @@ import { dateTimeTool, timezoneTool } from './utilities/datetime.js';
 import { cronBuilderTool } from './utilities/cron.js';
 import { fileHashCompareTool, imageMetadataTool } from './utilities/files.js';
 import { httpRequestBuilderTool, urlParserProTool } from './network/request-builder.js';
+// ─── Phase 4: 🧰 Everyday Tools ─────────────────────────────
+import { calculatorTools } from './everyday/calculators.js';
+import { currencyTools } from './everyday/currency.js';
+import { geometryTools } from './everyday/geometry.js';
 
 /** Every tool in the bot, in display order. */
 export const ALL_TOOLS: ToolDefinition[] = [
@@ -108,6 +112,10 @@ export const ALL_TOOLS: ToolDefinition[] = [
   imageMetadataTool,
   urlParserProTool,
   cronBuilderTool,
+  // 🧰 Everyday Tools — Phase 4
+  ...calculatorTools,
+  ...geometryTools,
+  ...currencyTools,
 ];
 
 const TOOL_MAP: Map<string, ToolDefinition> = new Map(ALL_TOOLS.map((tool) => [tool.id, tool]));
@@ -148,6 +156,15 @@ export const CATEGORIES: CategoryMeta[] = [
     },
   },
   {
+    id: 'everyday',
+    icon: '🧰',
+    title: { fa: 'ابزارهای روزمره', en: 'Everyday Tools' },
+    description: {
+      fa: 'ماشین‌حساب‌های مالی و ساختمانی، اسناد و PDF، تصاویر، مدیا، بهره‌وری و اطلاعات روزمره.',
+      en: 'Financial and construction calculators, documents and PDFs, images, media, productivity and everyday information.',
+    },
+  },
+  {
     id: 'utilities',
     icon: '🛠',
     title: { fa: 'ابزارهای کاربردی', en: 'Utilities' },
@@ -157,6 +174,36 @@ export const CATEGORIES: CategoryMeta[] = [
     },
   },
 ];
+
+/** Display order and labels for the sub-sections of 🧰 Everyday Tools. */
+export interface GroupMeta {
+  id: EverydayGroup;
+  icon: string;
+  title: { fa: string; en: string };
+}
+
+export const EVERYDAY_GROUPS: GroupMeta[] = [
+  { id: 'calculators', icon: '📐', title: { fa: 'ماشین‌حساب‌ها', en: 'Calculators' } },
+  { id: 'documents', icon: '📄', title: { fa: 'اسناد', en: 'Documents' } },
+  { id: 'images', icon: '🖼️', title: { fa: 'تصاویر', en: 'Images' } },
+  { id: 'media', icon: '🎵', title: { fa: 'مدیا', en: 'Media' } },
+  { id: 'productivity', icon: '🧠', title: { fa: 'بهره‌وری', en: 'Productivity' } },
+  { id: 'information', icon: '🌍', title: { fa: 'اطلاعات', en: 'Information' } },
+];
+
+export function groupMeta(id: EverydayGroup): GroupMeta | undefined {
+  return EVERYDAY_GROUPS.find((group) => group.id === id);
+}
+
+/** Tools inside one sub-section of 🧰 Everyday Tools, in registry order. */
+export function toolsByGroup(group: EverydayGroup): ToolDefinition[] {
+  return ALL_TOOLS.filter((tool) => tool.category === 'everyday' && tool.group === group);
+}
+
+/** Sub-sections that actually contain at least one tool. */
+export function populatedGroups(): GroupMeta[] {
+  return EVERYDAY_GROUPS.filter((group) => toolsByGroup(group.id).length > 0);
+}
 
 export function getTool(id: string): ToolDefinition | undefined {
   return TOOL_MAP.get(id);

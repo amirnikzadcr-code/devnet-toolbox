@@ -2,7 +2,7 @@
 
 # Tool reference
 
-**65 tools** across 4 categories, plus a virtual ⚡ Quick Tools screen that surfaces the 24 most-used ones.
+**77 tools** across 5 categories, plus a virtual ⚡ Quick Tools screen that surfaces the 26 most-used ones.
 
 | Flag | Meaning |
 |---|---|
@@ -15,6 +15,7 @@
 - [💻 Programming](#programming)
 - [🌐 Network](#network)
 - [🔐 Security](#security)
+- [🧰 Everyday Tools](#everyday-tools)
 - [🛠 Utilities](#utilities)
 - [⚡ Quick Tools](#quick-tools)
 
@@ -868,17 +869,224 @@ Output: MATCH ✅ or NOT MATCH ❌ together with all three hashes
 
 **Limitations.** Each file may be at most 8 MB, within the Bot API's 20 MB ceiling. Your file is never stored; only the first file's hashes are kept until the second arrives (15 minutes maximum). MD5 and SHA-1 are for comparison only, never for security decisions.
 
+## Everyday Tools 🧰
+
+*Financial and construction calculators, documents and PDFs, images, media, productivity and everyday information.* — 12 tools.
+
+### `percent_calc` — Percentage Calculator ⚡ ⌨️
+
+**فارسی:** ماشین‌حساب درصد — درصد یک عدد، درصد تغییر، افزایش و کاهش درصدی، مقدار اولیه از روی درصد و اختلاف درصدی را محاسبه می‌کند.
+
+Computes percentage of a number, percent change, increase/decrease, the original value behind a percentage, and percentage difference.
+
+**Usage.** Pick a mode: <code>15% of 200</code> — percentage of a number <code>120 to 150</code> — percent change <code>200 + 15%</code> or <code>200 - 15%</code> — increase/decrease <code>30 is 15% of what</code> — original value <code>diff 40 60</code> — percentage difference
+
+**Example**
+
+```
+Input: 15% of 200
+Output: 30
+```
+
+**Limitations.** Values up to 1e15. Division by zero and a zero baseline are rejected with a clear error.
+
+### `bmi_calc` — BMI Calculator ⌨️
+
+**فارسی:** محاسبه‌گر BMI — شاخص توده‌ی بدنی را از وزن و قد محاسبه می‌کند، دسته‌بندی WHO و محدوده‌ی وزن سالم را نشان می‌دهد. واحدهای متریک و امپریال پشتیبانی می‌شوند.
+
+Computes Body Mass Index from weight and height, shows the WHO classification and the healthy weight range. Metric and imperial units are supported.
+
+**Usage.** Metric: <code>weight: 70 height: 175</code> Imperial: <code>weight: 154 lb height: 5ft 9in</code>
+
+**Example**
+
+```
+Input: weight: 70 / height: 175
+Output: BMI 22.9 — Normal weight
+```
+
+**Limitations.** BMI targets adults and ignores muscle mass, sex and age; it is not medical advice. Height 50–250 cm, weight 2–500 kg.
+
+### `tip_calc` — Tip Calculator ⌨️
+
+**فارسی:** محاسبه‌گر انعام — انعام، مبلغ کل و سهم هر نفر را حساب می‌کند و در صورت نیاز سهم‌ها را رند می‌کند.
+
+Calculates the tip, the total and the share per person, with optional rounding of each share.
+
+**Usage.** <code>bill: 480 tip: 15 people: 3</code> Optional: <code>round: up</code>
+
+**Example**
+
+```
+Input: bill: 480 / tip: 15 / people: 3
+Output: tip 72 • total 552 • 184 each
+```
+
+**Limitations.** People 1–1000, tip 0–100%. The currency label is cosmetic; no FX conversion is performed.
+
+### `installment_calc` — Installment Calculator ⌨️
+
+**فارسی:** محاسبه‌گر اقساط — قسط ماهانه، مبلغ کل بازپرداخت و مجموع سود را با روش اقساط مساوی (Annuity) محاسبه می‌کند.
+
+Computes the monthly payment, total repayment and total interest using the standard equal-payment (annuity) method.
+
+**Usage.** <code>principal: 100000 rate: 18 months: 36</code> Rate is annual. <code>payments: 36</code> is accepted as an alias.
+
+**Example**
+
+```
+Input: principal: 100000 / rate: 18 / months: 36
+Output: monthly ≈ 3,615
+```
+
+**Limitations.** Fixed-rate annuity only. Fees, insurance, late penalties and variable rates are not modelled. 1–600 payments.
+
+### `compound_calc` — Compound Interest ⌨️
+
+**فارسی:** سود مرکب — مبلغ نهایی، مجموع واریزها و سود کسب‌شده را با احتساب واریز دوره‌ای و تناوب مرکب‌شدن محاسبه می‌کند.
+
+Computes the final amount, total contributions and interest earned, including periodic contributions and the compounding frequency.
+
+**Usage.** <code>principal: 10000 rate: 12 years: 5 frequency: monthly contribution: 500</code> Frequency: daily / weekly / monthly / quarterly / semiannual / yearly
+
+**Example**
+
+```
+Input: principal: 10000 / rate: 12 / years: 5
+Output: final ≈ 18,167
+```
+
+**Limitations.** Duration 1 month to 100 years. Taxes and inflation are ignored. Contributions are assumed at period end.
+
+### `profit_calc` — Profit / Loss Calculator ⌨️
+
+**فارسی:** سود و زیان — سود یا زیان ناخالص و خالص، درصد بازده و بهای تمام‌شده را با احتساب کارمزد محاسبه می‌کند.
+
+Computes gross and net profit or loss, return percentage and total cost, including fees.
+
+**Usage.** <code>buy: 100 sell: 130 quantity: 10 fees: 25</code> Fees may be a percentage: <code>fees: 1.5%</code>
+
+**Example**
+
+```
+Input: buy: 100 / sell: 130 / quantity: 10
+Output: net profit 300 (+30%)
+```
+
+**Limitations.** Taxes, spread and FX are not modelled. A percentage fee is applied to the combined buy and sell value.
+
+### `tax_calc` — Tax Calculator ⌨️
+
+**فارسی:** محاسبه‌گر مالیات — مالیات، مبلغ خالص و ناخالص را با نرخ دلخواه شما محاسبه می‌کند — هم افزودن مالیات و هم جدا کردن آن از مبلغ ناخالص.
+
+Computes tax, net and gross amounts at a rate you provide — both adding tax and extracting it from a gross amount.
+
+**Usage.** Add tax to a net amount: <code>amount: 1000 rate: 9</code> Extract tax from a gross amount: <code>amount: 1090 rate: 9 mode: inclusive</code>
+
+**Example**
+
+```
+Input: amount: 1000 / rate: 9
+Output: tax 90 • gross 1090
+```
+
+**Limitations.** You supply the rate; no country rate is hardcoded in the bot. Rate 0–100%.
+
+### `fuel_calc` — Fuel Cost Calculator ⌨️
+
+**فارسی:** هزینه‌ی سوخت — مقدار سوخت لازم، هزینه‌ی کل و هزینه به ازای هر کیلومتر را حساب می‌کند. مصرف را می‌توان به L/100km، km/L یا MPG داد.
+
+Computes fuel required, total cost and cost per kilometre. Consumption may be given as L/100km, km/L or MPG.
+
+**Usage.** <code>distance: 450 consumption: 7.5 price: 1.85</code> Consumption defaults to L/100km. Alternatives: <code>consumption: 13 km/l</code> • <code>consumption: 31 mpg</code> Miles: <code>distance: 300 mi</code>
+
+**Example**
+
+```
+Input: distance: 450 / consumption: 7.5 / price: 1.85
+Output: 33.75 L • cost 62.44
+```
+
+**Limitations.** Constant consumption is assumed; traffic, gradient and driving style are ignored. The currency label is cosmetic.
+
+### `electricity_calc` — Electricity Calculator ⌨️
+
+**فارسی:** محاسبه‌گر برق — توان، ولتاژ و جریان را از روی یکدیگر حساب می‌کند و مصرف انرژی و هزینه‌ی تقریبی را نشان می‌دهد.
+
+Derives power, voltage and current from one another, then estimates energy consumption and cost.
+
+**Usage.** Provide any two of the three: <code>power: 1500 voltage: 220</code> For consumption and cost: <code>power: 1500 hours: 4 days: 30 price: 0.32</code>
+
+**Example**
+
+```
+Input: power: 1500 / voltage: 220
+Output: current ≈ 6.82 A
+```
+
+**Limitations.** Assumes DC or AC at power factor 1. For inductive loads supply "power factor". Tiered tariffs are not modelled.
+
+### `geometry_calc` — Area & Volume ⌨️
+
+**فارسی:** مساحت و حجم — مساحت، محیط، مساحت سطح و حجم اشکال هندسی رایج را محاسبه می‌کند: مستطیل، مربع، دایره، مثلث، مکعب، مکعب‌مستطیل، استوانه، کره و مخروط.
+
+Computes area, perimeter, surface area and volume for common shapes: rectangle, square, circle, triangle, cube, cuboid, cylinder, sphere and cone.
+
+**Usage.** <code>shape: rectangle width: 4 height: 3</code> Shapes: rectangle, square, circle, triangle, cube, box, cylinder, sphere, cone Units are arbitrary and reported back unchanged.
+
+**Example**
+
+```
+Input: shape: circle / radius: 5
+Output: area 78.54 • circumference 31.42
+```
+
+**Limitations.** Dimensions must be positive and below 1e7. No unit conversion is performed; all dimensions must share one unit.
+
+### `construction_calc` — Construction Calculator ⌨️
+
+**فارسی:** محاسبات ساختمانی — مساحت، حجم، بتن، دیوار، آجر، کاشی و رنگ را با درصد پرت قابل تنظیم محاسبه می‌کند و همه‌ی نرخ‌های مصرف را شفاف نشان می‌دهد.
+
+Calculates area, volume, concrete, walls, bricks, tiles and paint with a configurable wastage percentage, printing every coverage rate it used.
+
+**Usage.** <code>mode: concrete length: 5 width: 4 thickness: 0.15 waste: 10</code> Modes: area, volume, concrete, wall, brick, tile, paint Overridable rates: <code>bricks per m2</code>, <code>paint per m2</code>, <code>cement bags per m3</code>, <code>tile size</code>, <code>coats</code>
+
+**Example**
+
+```
+Input: mode: concrete / length: 5 / width: 4 / thickness: 0.15
+Output: 3 m³ + 10% waste → 3.3 m³
+```
+
+**Limitations.** All dimensions are in metres. Default coverage rates are common industry figures that vary by material; override them with your supplier’s figures for real projects. This is not a substitute for structural engineering.
+
+### `currency_convert` — Currency Converter ⚡ 🌐 ⌨️
+
+**فارسی:** تبدیل ارز — تبدیل ارز با نرخ زندهٔ سرویس‌های عمومی (Frankfurter/ECB و ExchangeRate-API). نرخ جاری، مبلغ تبدیل‌شده، زمان آخرین به‌روزرسانی و نام منبع نمایش داده می‌شود.
+
+Converts currencies using live rates from public providers (Frankfurter/ECB and ExchangeRate-API). Shows the current rate, the converted amount, the last-updated time and the source.
+
+**Usage.** e.g. <code>100 USD to EUR</code> or <code>250 EUR TRY</code>. Without an amount the rate for one unit is shown: <code>USD EUR</code>.
+
+**Example**
+
+```
+Input: 100 USD to EUR
+```
+
+**Limitations.** Rates are daily reference rates, not live market or bureau-de-change rates, and exclude fees and spreads. If the providers are unreachable the tool errors out instead of showing an estimate. For the Iranian rial only the official published rate is available (not the open-market rate). Results are cached for up to 5 minutes.
+
 ## Utilities 🛠
 
 *Calculator, unit conversion, QR, date/time, timezones, CSV, image metadata, text transforms, URLs and cron.* — 18 tools.
 
 ### `calculator` — Calculator ⚡ ⌨️
 
-**فارسی:** ماشین‌حساب — عبارت‌های ریاضی را با اولویت درست عملگرها، پرانتز، توان و توابع (sqrt, sin, cos, log, ln …) محاسبه می‌کند. ارزیابی با الگوریتم Shunting-yard انجام می‌شود و هرگز از eval استفاده نمی‌کند.
+**فارسی:** ماشین‌حساب — عبارت‌های ریاضی را با اولویت درست عملگرها، پرانتز، توان، ریشه، فاکتوریل و توابع یک/دوآرگومانی (sqrt، cbrt، root، logb، min، max، sin، cos، log، ln …) محاسبه می‌کند. ارقام فارسی/عربی، جداکنندهٔ هزارگان و نمادهای × ÷ √ π هم پذیرفته می‌شوند. ارزیابی با الگوریتم Shunting-yard انجام می‌شود و هرگز از eval استفاده نمی‌کند.
 
-Evaluates mathematical expressions with correct precedence, parentheses, exponentiation and functions (sqrt, sin, cos, log, ln …) using a Shunting-yard parser — never eval.
+Evaluates mathematical expressions with correct precedence, parentheses, exponentiation, roots, factorial and one/two-argument functions (sqrt, cbrt, root, logb, min, max, sin, cos, log, ln …). Persian/Arabic digits, thousands separators and the × ÷ √ π symbols are accepted. Uses a Shunting-yard parser — never eval.
 
-**Usage.** Send an expression, e.g. <code>(2+3)*4^2</code> or <code>sqrt(144)+pi</code>.
+**Usage.** Send an expression, e.g. <code>(2+3)*4^2</code>, <code>sqrt(144)+pi</code>, <code>root(27,3)</code>, <code>logb(1024,2)</code> or <code>fact(10)</code>. Constants: pi, e, tau, phi · operators: + - * / % ^ and parentheses.
 
 **Example**
 
@@ -887,7 +1095,7 @@ Input: (2+3)*4
 Output: 20
 ```
 
-**Limitations.** Max 200 characters, IEEE-754 doubles only, no variables, no complex numbers.
+**Limitations.** Max 200 characters, IEEE-754 doubles only, no variables, no complex numbers. Trigonometry works in radians (use rad()/deg()) and fact() is capped at 170.
 
 ### `timestamp` — Unix Timestamp Converter ⚡ ⌨️
 
@@ -908,9 +1116,9 @@ Output: 2023-11-14 22:13:20 UTC
 
 ### `unit_convert` — Unit Converter ⌨️
 
-**فارسی:** مبدل واحد — بین واحدهای طول، جرم، داده، زمان، سرعت، مساحت، حجم و دما تبدیل انجام می‌دهد.
+**فارسی:** مبدل واحد — بین واحدهای طول، جرم، داده، زمان، سرعت، مساحت، حجم، دما، فشار، انرژی و توان تبدیل انجام می‌دهد.
 
-Converts between length, mass, data, time, speed, area, volume and temperature units.
+Converts between length, mass, data, time, speed, area, volume, temperature, pressure, energy and power units.
 
 **Usage.** Format: <code>value from to target</code> Example: <code>10 km to mi</code> or <code>100 c to f</code>
 
@@ -921,7 +1129,7 @@ Input: 10 km to mi
 Output: 6.2137
 ```
 
-**Limitations.** Supported: m,km,cm,mm,mi,yd,ft,in,nmi • kg,g,mg,t,lb,oz • b,kb,mb,gb,tb • s,ms,min,h,d,wk • m/s,km/h,mph,kn • m2,km2,ha,ft2,ac • l,ml,m3,gal,qt • c,f,k
+**Limitations.** Length m,km,cm,mm,mi,yd,ft,in,nmi • mass kg,g,mg,t,lb,oz • data b,kb,mb,gb,tb,pb,kib,mib,gib,bit • time s,ms,us,ns,min,h,d,wk,mo,yr • speed m/s,km/h,mph,kn,ft/s,mach • area m2,km2,cm2,ha,ft2,ac,mi2,yd2 • volume l,ml,m3,cm3,gal,qt,pt,floz,cup,ft3 • temp c,f,k • pressure pa,kpa,bar,atm,psi,torr,mmhg • energy j,kj,wh,kwh,cal,kcal,btu • power w,kw,hp,ps
 
 ### `qr_code` — QR Code Generator ⚡ ⌨️
 
@@ -940,22 +1148,22 @@ Output: QR image link
 
 **Limitations.** Max 900 characters. Image rendering is delegated to the external api.qrserver.com service.
 
-### `text_counter` — Text Counter ⌨️
+### `text_counter` — Word & Character Counter ⌨️
 
-**فارسی:** شمارشگر متن — کاراکترها را برای محدودیت‌های رایج پلتفرم‌ها (توییت، SMS، متادیتای SEO، پیام تلگرام) می‌شمارد و باقی‌مانده‌ی مجاز را نشان می‌دهد.
+**فارسی:** شمارشگر کلمه و کاراکتر — کاراکتر (با و بدون فاصله)، کلمه، خط، جمله، پاراگراف و زمان تقریبی مطالعه را می‌شمارد و متن را با محدودیت‌های رایج پلتفرم‌ها (توییت، SMS، SEO، تلگرام) می‌سنجد. فارسی و انگلیسی هر دو پشتیبانی می‌شوند.
 
-Counts characters against common platform limits (tweet, SMS, SEO metadata, Telegram message) and shows the remaining budget.
+Counts characters (with and without spaces), words, lines, sentences, paragraphs and reading time, then checks the text against common platform limits (tweet, SMS, SEO, Telegram). Persian and English are both supported.
 
 **Usage.** Send any text.
 
 **Example**
 
 ```
-Input: hello
-Output: 5 characters, 1 word
+Input: hello world
+Output: 11 characters • 2 words • 1 sentence
 ```
 
-**Limitations.** Max 8000 characters.
+**Limitations.** Max 8000 characters. Sentence counting relies on terminators (. ! ? … ؟) and may split abbreviations such as “Dr.”.
 
 ### `case_convert` — Case Converter ⌨️
 
@@ -1197,7 +1405,7 @@ The ⚡ Quick Tools screen is not a separate category — it is a shortcut list 
 
 `quick` flag, so a tool appears both in its own category and here:
 
-`json_format` · `base64_encode` · `base64_decode` · `jwt_decode` · `yaml_json` · `base_convert` · `diff_check` · `regex_helper` · `dns_lookup` · `ip_info` · `http_status` · `ping` · `hash_all` · `sha256` · `uuid_gen` · `password_gen` · `calculator` · `timestamp` · `qr_code` · `color_convert` · `datetime_convert` · `text_transform` · `url_parse_pro` · `cron_builder`
+`json_format` · `base64_encode` · `base64_decode` · `jwt_decode` · `yaml_json` · `base_convert` · `diff_check` · `regex_helper` · `dns_lookup` · `ip_info` · `http_status` · `ping` · `hash_all` · `sha256` · `uuid_gen` · `password_gen` · `calculator` · `timestamp` · `qr_code` · `color_convert` · `datetime_convert` · `text_transform` · `url_parse_pro` · `cron_builder` · `percent_calc` · `currency_convert`
 
 ---
 

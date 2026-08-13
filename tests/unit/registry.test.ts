@@ -64,7 +64,7 @@ describe('registry integrity', () => {
     }
     // Tools flagged as network must live in a category where that makes sense.
     for (const tool of ALL_TOOLS.filter((t) => t.network)) {
-      expect(['network', 'utilities'], tool.id).toContain(tool.category);
+      expect(['network', 'utilities', 'everyday'], tool.id).toContain(tool.category);
     }
   });
 

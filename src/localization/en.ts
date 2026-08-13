@@ -171,6 +171,28 @@ export const en = {
   sec_dashboard_empty: 'No data to display yet.',
   sec_recent_findings: '🔎 <b>Recent scans</b>',
 
+  // ─── Phase 4: 🧰 Everyday Tools ──────────────────────────
+  cat_everyday: '🧰 Everyday Tools',
+  everyday_group_calculators: '📐 Calculators',
+  everyday_group_documents: '📄 Documents',
+  everyday_group_images: '🖼️ Images',
+  everyday_group_media: '🎵 Media',
+  everyday_group_productivity: '🧠 Productivity',
+  everyday_group_information: '🌍 Information',
+  everyday_group_favorites: '⭐ Favorites',
+
+  btn_favorites: '⭐ My Favorites',
+  btn_fav_add: '⭐ Add to favorites',
+  btn_fav_remove: '💔 Remove from favorites',
+  fav_title: '⭐ <b>My Favorites</b>',
+  fav_empty:
+    'You have not starred any tool yet.\nOpen any tool and press “⭐ Add to favorites” to see it here.',
+  fav_body: '{count} saved tools • page {page} of {pages}',
+  fav_added: '⭐ Added to favorites',
+  fav_removed: '💔 Removed from favorites',
+  fav_full: 'Your favorites are full (max {max} tools). Remove one first.',
+  fav_error: 'Could not save the favorite. Please try again.',
+
   err_title: '❌ <b>Operation failed.</b>',
   err_generic: 'An unexpected error occurred. Please try again later.',
   err_rate_limited: '🚦 Too many requests. Please wait {seconds} seconds.',

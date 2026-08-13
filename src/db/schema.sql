@@ -75,3 +75,16 @@ CREATE TABLE IF NOT EXISTS security_scans (
 CREATE INDEX IF NOT EXISTS idx_scans_user_date ON security_scans (user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_scans_hash ON security_scans (target_hash, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_scans_type ON security_scans (scan_type, created_at DESC);
+
+-- ─── Phase 4: personal favourites (requirement 50) ──────────────────────
+-- Stores only the tool id a user starred and when. No tool input, no output,
+-- and nothing that reveals what the user actually ran through the tool.
+CREATE TABLE IF NOT EXISTS favorites (
+  user_id  INTEGER NOT NULL,
+  tool_id  TEXT    NOT NULL,
+  added_at INTEGER NOT NULL,               -- unix seconds
+  PRIMARY KEY (user_id, tool_id),
+  FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_favorites_user ON favorites (user_id, added_at DESC);

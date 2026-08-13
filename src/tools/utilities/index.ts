@@ -4,19 +4,70 @@ import { errInvalidInput } from '../../utils/errors.js';
 import { parseHttpUrl } from '../../utils/validate.js';
 
 // ─── Calculator (safe expression evaluator, no eval) ───────
-type Token = { type: 'num'; value: number } | { type: 'op'; value: string } | { type: 'fn'; value: string };
+type Token =
+  | { type: 'num'; value: number }
+  | { type: 'op'; value: string }
+  | { type: 'fn'; value: string }
+  | { type: 'sep'; value: ',' };
 
 const FUNCTIONS: Record<string, (x: number) => number> = {
   sqrt: Math.sqrt, abs: Math.abs, sin: Math.sin, cos: Math.cos, tan: Math.tan,
   log: Math.log10, ln: Math.log, exp: Math.exp, floor: Math.floor, ceil: Math.ceil,
   round: Math.round, sign: Math.sign,
+  // Phase 4 additions — requested by the "advanced calculator" item. They are
+  // extra entries on the existing parser, not a second calculator.
+  cbrt: Math.cbrt, trunc: Math.trunc, log2: Math.log2,
+  asin: Math.asin, acos: Math.acos, atan: Math.atan,
+  sinh: Math.sinh, cosh: Math.cosh, tanh: Math.tanh,
+  fact: factorial, rad: (x) => (x * Math.PI) / 180, deg: (x) => (x * 180) / Math.PI,
 };
-const CONSTANTS: Record<string, number> = { pi: Math.PI, e: Math.E };
+
+/** Two-argument functions. Parsed with the same Shunting-yard pass. */
+const FUNCTIONS2: Record<string, (a: number, b: number) => number> = {
+  root: (x, n) => {
+    if (n === 0) throw errInvalidInput('درجهٔ ریشه نمی‌تواند صفر باشد.', 'Root degree cannot be zero.');
+    return x < 0 && Math.abs(n % 2) === 1 ? -(Math.abs(x) ** (1 / n)) : x ** (1 / n);
+  },
+  pow: (a, b) => a ** b,
+  logb: (x, base) => Math.log(x) / Math.log(base),
+  min: Math.min,
+  max: Math.max,
+  mod: (a, b) => {
+    if (b === 0) throw errInvalidInput('باقیمانده بر صفر مجاز نیست.', 'Modulo by zero.');
+    return a % b;
+  },
+};
+
+/** Integer factorial, capped so the parser can never burn CPU on `fact(1e9)`. */
+function factorial(x: number): number {
+  if (!Number.isInteger(x) || x < 0) {
+    throw errInvalidInput('فاکتوریل فقط برای اعداد صحیح نامنفی تعریف شده است.', 'Factorial needs a non-negative integer.');
+  }
+  if (x > 170) throw errInvalidInput('فاکتوریل بیش از ۱۷۰ سرریز می‌کند.', 'Factorial above 170 overflows.');
+  let acc = 1;
+  for (let i = 2; i <= x; i += 1) acc *= i;
+  return acc;
+}
+
+const CONSTANTS: Record<string, number> = { pi: Math.PI, e: Math.E, tau: Math.PI * 2, phi: (1 + Math.sqrt(5)) / 2 };
 const PRECEDENCE: Record<string, number> = { '+': 1, '-': 1, '*': 2, '/': 2, '%': 2, '^': 3 };
 
 function tokenize(expr: string): Token[] {
   const tokens: Token[] = [];
-  const src = expr.replace(/\s+/g, '').replace(/×/g, '*').replace(/÷/g, '/').replace(/,/g, '');
+  const src = expr
+    .replace(/\s+/g, '')
+    // NB: ASCII 'x' is deliberately NOT treated as ×, it would break max()/exp().
+    .replace(/[×·]/g, '*')
+    .replace(/[÷:]/g, '/')
+    .replace(/[−–—]/g, '-')
+    .replace(/√/g, 'sqrt')
+    .replace(/π/g, 'pi')
+    // Thousands separators disappear; every other comma separates arguments.
+    .replace(/(?<=\d),(?=\d{3}(\D|$))/g, '')
+    // Persian/Arabic-Indic digits and decimal marks.
+    .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
+    .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
+    .replace(/٫/g, '.');
   let i = 0;
   while (i < src.length) {
     const ch = src[i] as string;
@@ -46,12 +97,17 @@ function tokenize(expr: string): Token[] {
       }
       const lower = name.toLowerCase();
       if (lower in CONSTANTS) tokens.push({ type: 'num', value: CONSTANTS[lower] as number });
-      else if (lower in FUNCTIONS) tokens.push({ type: 'fn', value: lower });
+      else if (lower in FUNCTIONS || lower in FUNCTIONS2) tokens.push({ type: 'fn', value: lower });
       else throw errInvalidInput(`تابع یا ثابت ناشناخته: ${name}`, `Unknown function/constant: ${name}`);
       continue;
     }
     if ('+-*/%^()'.includes(ch)) {
       tokens.push({ type: 'op', value: ch });
+      i += 1;
+      continue;
+    }
+    if (ch === ',') {
+      tokens.push({ type: 'sep', value: ',' });
       i += 1;
       continue;
     }
@@ -76,7 +132,7 @@ export function evaluateExpression(expr: string): number {
     const isUnary =
       tok.type === 'op' &&
       (tok.value === '-' || tok.value === '+') &&
-      (!prev || (prev.type === 'op' && prev.value !== ')'));
+      (!prev || prev.type === 'sep' || (prev.type === 'op' && prev.value !== ')'));
     if (isUnary) {
       normalized.push({ type: 'num', value: 0 });
     }
@@ -88,7 +144,20 @@ export function evaluateExpression(expr: string): number {
   for (const tok of normalized) {
     if (tok.type === 'num') output.push(tok);
     else if (tok.type === 'fn') stack.push(tok);
-    else if (tok.value === '(') stack.push(tok);
+    else if (tok.type === 'sep') {
+      // Argument separator: flush everything up to (but not including) the
+      // opening parenthesis of the current call.
+      let sawParen = false;
+      while (stack.length) {
+        const top = stack[stack.length - 1] as Token;
+        if (top.type === 'op' && top.value === '(') {
+          sawParen = true;
+          break;
+        }
+        output.push(stack.pop() as Token);
+      }
+      if (!sawParen) throw errInvalidInput('کاما خارج از آرگومان تابع است.', 'Comma outside a function call.');
+    } else if (tok.value === '(') stack.push(tok);
     else if (tok.value === ')') {
       let found = false;
       while (stack.length) {
@@ -135,9 +204,21 @@ export function evaluateExpression(expr: string): number {
   for (const tok of output) {
     if (tok.type === 'num') evalStack.push(tok.value);
     else if (tok.type === 'fn') {
+      const binary = FUNCTIONS2[tok.value];
+      if (binary) {
+        const b = evalStack.pop();
+        const a = evalStack.pop();
+        if (a === undefined || b === undefined) {
+          throw errInvalidInput(`تابع ${tok.value} به دو آرگومان نیاز دارد.`, `Function ${tok.value} needs two arguments.`);
+        }
+        evalStack.push(binary(a, b));
+        continue;
+      }
       const x = evalStack.pop();
       if (x === undefined) throw errInvalidInput('عبارت ناقص است.', 'Incomplete expression.');
       evalStack.push((FUNCTIONS[tok.value] as (n: number) => number)(x));
+    } else if (tok.type === 'sep') {
+      throw errInvalidInput('کاما در جای نادرست است.', 'Misplaced comma.');
     } else {
       const b = evalStack.pop();
       const a = evalStack.pop();
@@ -176,17 +257,17 @@ export const calculatorTool = defineTool({
   needsInput: true,
   title: { fa: 'ماشین‌حساب', en: 'Calculator' },
   description: {
-    fa: 'عبارت‌های ریاضی را با اولویت درست عملگرها، پرانتز، توان و توابع (sqrt, sin, cos, log, ln …) محاسبه می‌کند. ارزیابی با الگوریتم Shunting-yard انجام می‌شود و هرگز از eval استفاده نمی‌کند.',
-    en: 'Evaluates mathematical expressions with correct precedence, parentheses, exponentiation and functions (sqrt, sin, cos, log, ln …) using a Shunting-yard parser — never eval.',
+    fa: 'عبارت‌های ریاضی را با اولویت درست عملگرها، پرانتز، توان، ریشه، فاکتوریل و توابع یک/دوآرگومانی (sqrt، cbrt، root، logb، min، max، sin، cos، log، ln …) محاسبه می‌کند. ارقام فارسی/عربی، جداکنندهٔ هزارگان و نمادهای × ÷ √ π هم پذیرفته می‌شوند. ارزیابی با الگوریتم Shunting-yard انجام می‌شود و هرگز از eval استفاده نمی‌کند.',
+    en: 'Evaluates mathematical expressions with correct precedence, parentheses, exponentiation, roots, factorial and one/two-argument functions (sqrt, cbrt, root, logb, min, max, sin, cos, log, ln …). Persian/Arabic digits, thousands separators and the × ÷ √ π symbols are accepted. Uses a Shunting-yard parser — never eval.',
   },
   usage: {
-    fa: 'عبارت را ارسال کنید؛ مثلاً <code>(2+3)*4^2</code> یا <code>sqrt(144)+pi</code>.',
-    en: 'Send an expression, e.g. <code>(2+3)*4^2</code> or <code>sqrt(144)+pi</code>.',
+    fa: 'عبارت را ارسال کنید؛ مثلاً <code>(2+3)*4^2</code>، <code>sqrt(144)+pi</code>، <code>root(27,3)</code>، <code>logb(1024,2)</code> یا <code>fact(10)</code>.\nثابت‌ها: pi، e، tau، phi · عملگرها: + - * / % ^ و پرانتز.',
+    en: 'Send an expression, e.g. <code>(2+3)*4^2</code>, <code>sqrt(144)+pi</code>, <code>root(27,3)</code>, <code>logb(1024,2)</code> or <code>fact(10)</code>.\nConstants: pi, e, tau, phi · operators: + - * / % ^ and parentheses.',
   },
   example: { fa: 'ورودی: (2+3)*4\nخروجی: 20', en: 'Input: (2+3)*4\nOutput: 20' },
   limitations: {
-    fa: 'حداکثر ۲۰۰ کاراکتر، فقط اعداد اعشاری IEEE-754، بدون متغیر و بدون اعداد مختلط.',
-    en: 'Max 200 characters, IEEE-754 doubles only, no variables, no complex numbers.',
+    fa: 'حداکثر ۲۰۰ کاراکتر، فقط اعداد اعشاری IEEE-754، بدون متغیر و بدون اعداد مختلط. توابع مثلثاتی با رادیان کار می‌کنند (از rad()/deg() استفاده کنید) و fact() تا ۱۷۰ مجاز است.',
+    en: 'Max 200 characters, IEEE-754 doubles only, no variables, no complex numbers. Trigonometry works in radians (use rad()/deg()) and fact() is capped at 170.',
   },
   run: (input, ctx) => {
     const result = evaluateExpression(input);
@@ -207,11 +288,24 @@ export const calculatorTool = defineTool({
 const UNITS: Record<string, Record<string, number>> = {
   length: { m: 1, km: 1000, cm: 0.01, mm: 0.001, mi: 1609.344, yd: 0.9144, ft: 0.3048, in: 0.0254, nmi: 1852 },
   mass: { kg: 1, g: 0.001, mg: 1e-6, t: 1000, lb: 0.45359237, oz: 0.028349523125 },
-  data: { b: 1, kb: 1024, mb: 1024 ** 2, gb: 1024 ** 3, tb: 1024 ** 4, bit: 0.125 },
-  time: { s: 1, ms: 0.001, min: 60, h: 3600, d: 86400, wk: 604800 },
-  speed: { 'm/s': 1, 'km/h': 0.277778, mph: 0.44704, kn: 0.514444 },
-  area: { m2: 1, km2: 1e6, ha: 1e4, ft2: 0.092903, ac: 4046.86 },
-  volume: { l: 1, ml: 0.001, m3: 1000, gal: 3.785411784, qt: 0.946352946 },
+  // Phase 4: decimal (SI) data units sit alongside the binary ones so both
+  // `1 gb to mb` (binary, unchanged) and `1 gib to mib` behave predictably.
+  data: {
+    b: 1, kb: 1024, mb: 1024 ** 2, gb: 1024 ** 3, tb: 1024 ** 4, pb: 1024 ** 5, bit: 0.125,
+    kib: 1024, mib: 1024 ** 2, gib: 1024 ** 3, tib: 1024 ** 4,
+    kbit: 128, mbit: 131072, gbit: 134217728,
+  },
+  time: { s: 1, ms: 0.001, us: 1e-6, ns: 1e-9, min: 60, h: 3600, d: 86400, wk: 604800, mo: 2629800, yr: 31557600 },
+  speed: { 'm/s': 1, 'km/h': 0.277778, mph: 0.44704, kn: 0.514444, 'ft/s': 0.3048, mach: 340.29 },
+  area: { m2: 1, km2: 1e6, ha: 1e4, ft2: 0.092903, ac: 4046.86, cm2: 1e-4, mi2: 2589988.11, yd2: 0.83612736, in2: 0.00064516 },
+  volume: {
+    l: 1, ml: 0.001, m3: 1000, gal: 3.785411784, qt: 0.946352946,
+    cm3: 0.001, pt: 0.473176473, floz: 0.0295735295625, cup: 0.2365882365, ft3: 28.316846592,
+  },
+  // ─── Phase 4 additions ───────────────────────────────────
+  pressure: { pa: 1, kpa: 1000, mpa: 1e6, bar: 1e5, mbar: 100, atm: 101325, psi: 6894.757293, torr: 133.322368, mmhg: 133.322368 },
+  energy: { j: 1, kj: 1000, mj: 1e6, wh: 3600, kwh: 3.6e6, cal: 4.184, kcal: 4184, btu: 1055.05585, ev: 1.602176634e-19 },
+  power: { w: 1, kw: 1000, mw: 1e6, hp: 745.699872, ps: 735.49875, 'btu/h': 0.29307107 },
 };
 
 export function convertUnit(value: number, from: string, to: string): number {
@@ -241,8 +335,8 @@ export const unitConverter = defineTool({
   needsInput: true,
   title: { fa: 'مبدل واحد', en: 'Unit Converter' },
   description: {
-    fa: 'بین واحدهای طول، جرم، داده، زمان، سرعت، مساحت، حجم و دما تبدیل انجام می‌دهد.',
-    en: 'Converts between length, mass, data, time, speed, area, volume and temperature units.',
+    fa: 'بین واحدهای طول، جرم، داده، زمان، سرعت، مساحت، حجم، دما، فشار، انرژی و توان تبدیل انجام می‌دهد.',
+    en: 'Converts between length, mass, data, time, speed, area, volume, temperature, pressure, energy and power units.',
   },
   usage: {
     fa: 'قالب: <code>عدد واحد‌مبدأ to واحد‌مقصد</code>\nنمونه: <code>10 km to mi</code> یا <code>100 c to f</code>',
@@ -250,8 +344,8 @@ export const unitConverter = defineTool({
   },
   example: { fa: 'ورودی: 10 km to mi\nخروجی: 6.2137', en: 'Input: 10 km to mi\nOutput: 6.2137' },
   limitations: {
-    fa: 'واحدهای پشتیبانی‌شده: m,km,cm,mm,mi,yd,ft,in,nmi • kg,g,mg,t,lb,oz • b,kb,mb,gb,tb • s,ms,min,h,d,wk • m/s,km/h,mph,kn • m2,km2,ha,ft2,ac • l,ml,m3,gal,qt • c,f,k',
-    en: 'Supported: m,km,cm,mm,mi,yd,ft,in,nmi • kg,g,mg,t,lb,oz • b,kb,mb,gb,tb • s,ms,min,h,d,wk • m/s,km/h,mph,kn • m2,km2,ha,ft2,ac • l,ml,m3,gal,qt • c,f,k',
+    fa: 'طول m,km,cm,mm,mi,yd,ft,in,nmi • جرم kg,g,mg,t,lb,oz • داده b,kb,mb,gb,tb,pb,kib,mib,gib,bit • زمان s,ms,us,ns,min,h,d,wk,mo,yr • سرعت m/s,km/h,mph,kn,ft/s,mach • مساحت m2,km2,cm2,ha,ft2,ac,mi2,yd2 • حجم l,ml,m3,cm3,gal,qt,pt,floz,cup,ft3 • دما c,f,k • فشار pa,kpa,bar,atm,psi,torr,mmhg • انرژی j,kj,wh,kwh,cal,kcal,btu • توان w,kw,hp,ps',
+    en: 'Length m,km,cm,mm,mi,yd,ft,in,nmi • mass kg,g,mg,t,lb,oz • data b,kb,mb,gb,tb,pb,kib,mib,gib,bit • time s,ms,us,ns,min,h,d,wk,mo,yr • speed m/s,km/h,mph,kn,ft/s,mach • area m2,km2,cm2,ha,ft2,ac,mi2,yd2 • volume l,ml,m3,cm3,gal,qt,pt,floz,cup,ft3 • temp c,f,k • pressure pa,kpa,bar,atm,psi,torr,mmhg • energy j,kj,wh,kwh,cal,kcal,btu • power w,kw,hp,ps',
   },
   run: (input) => {
     const m = /^\s*(-?[\d.]+)\s*([a-z0-9/²³]+)\s*(?:to|=>|→|>)\s*([a-z0-9/²³]+)\s*$/i.exec(input.trim());
@@ -447,23 +541,62 @@ export const cronTool = defineTool({
 });
 
 // ─── Text counter (utilities-side alias with different focus) ──
+export interface TextStats {
+  characters: number;
+  charactersNoSpaces: number;
+  words: number;
+  lines: number;
+  sentences: number;
+  paragraphs: number;
+  /** Estimated reading time in whole seconds at 200 wpm. */
+  readingSeconds: number;
+}
+
+/**
+ * Language-agnostic text statistics.
+ *
+ * Word splitting uses whitespace rather than a Latin-only `\w+` pattern so
+ * Persian, Arabic and CJK-adjacent text is not silently miscounted. Zero-width
+ * non-joiners (U+200C), which are extremely common in Persian, are treated as
+ * part of a word rather than a separator — "می‌روم" is one word, not two.
+ */
+export function countText(input: string): TextStats {
+  const characters = [...input].length;
+  const charactersNoSpaces = [...input.replace(/\s/g, '')].length;
+  const trimmed = input.trim();
+  const words = trimmed ? trimmed.split(/[\s\u00a0]+/).filter(Boolean).length : 0;
+  const lines = input === '' ? 0 : input.split(/\r\n|\r|\n/).length;
+  const paragraphs = trimmed ? trimmed.split(/(?:\r?\n\s*){2,}/).filter((p) => p.trim() !== '').length : 0;
+  // Persian uses ؟ and ٬؛ alongside Latin terminators.
+  const sentences = trimmed
+    ? trimmed.split(/[.!?؟…]+[\s"')\]]*|\n+/).filter((s) => s.trim() !== '').length
+    : 0;
+  const readingSeconds = Math.round((words / 200) * 60);
+  return { characters, charactersNoSpaces, words, lines, sentences, paragraphs, readingSeconds };
+}
+
 export const textCounter = defineTool({
   id: 'text_counter',
   category: 'utilities',
   icon: '🔢',
   needsInput: true,
-  title: { fa: 'شمارشگر متن', en: 'Text Counter' },
+  title: { fa: 'شمارشگر کلمه و کاراکتر', en: 'Word & Character Counter' },
   description: {
-    fa: 'کاراکترها را برای محدودیت‌های رایج پلتفرم‌ها (توییت، SMS، متادیتای SEO، پیام تلگرام) می‌شمارد و باقی‌مانده‌ی مجاز را نشان می‌دهد.',
-    en: 'Counts characters against common platform limits (tweet, SMS, SEO metadata, Telegram message) and shows the remaining budget.',
+    fa: 'کاراکتر (با و بدون فاصله)، کلمه، خط، جمله، پاراگراف و زمان تقریبی مطالعه را می‌شمارد و متن را با محدودیت‌های رایج پلتفرم‌ها (توییت، SMS، SEO، تلگرام) می‌سنجد. فارسی و انگلیسی هر دو پشتیبانی می‌شوند.',
+    en: 'Counts characters (with and without spaces), words, lines, sentences, paragraphs and reading time, then checks the text against common platform limits (tweet, SMS, SEO, Telegram). Persian and English are both supported.',
   },
   usage: { fa: 'متن را ارسال کنید.', en: 'Send any text.' },
-  example: { fa: 'ورودی: سلام\nخروجی: ۴ کاراکتر، ۱ کلمه', en: 'Input: hello\nOutput: 5 characters, 1 word' },
-  limitations: { fa: 'حداکثر ۸۰۰۰ کاراکتر.', en: 'Max 8000 characters.' },
+  example: {
+    fa: 'ورودی: سلام دنیا\nخروجی: ۹ کاراکتر • ۲ کلمه • ۱ جمله',
+    en: 'Input: hello world\nOutput: 11 characters • 2 words • 1 sentence',
+  },
+  limitations: {
+    fa: 'حداکثر ۸۰۰۰ کاراکتر. شمارش جمله بر پایه‌ی نشانه‌های پایانی (. ! ? … ؟ !) است و کوته‌نوشت‌هایی مثل «Dr.» را ممکن است جدا بشمارد.',
+    en: 'Max 8000 characters. Sentence counting relies on terminators (. ! ? … ؟) and may split abbreviations such as “Dr.”.',
+  },
   run: (input, ctx) => {
-    const chars = [...input].length;
-    const words = input.trim() ? input.trim().split(/\s+/).length : 0;
     const fa = ctx.lang === 'fa';
+    const stats = countText(input);
     const limits: [string, number][] = [
       ['Tweet (X)', 280],
       ['SMS', 160],
@@ -473,14 +606,43 @@ export const textCounter = defineTool({
     ];
     const rows = limits
       .map(([name, limit]) => {
-        const left = limit - chars;
+        const left = limit - stats.characters;
         const icon = left >= 0 ? '✅' : '❌';
-        return `${icon} <b>${name}</b>: ${chars}/${limit} (${left >= 0 ? `${left} ${fa ? 'باقی' : 'left'}` : `${-left} ${fa ? 'اضافه' : 'over'}`})`;
+        return `${icon} <b>${name}</b>: ${stats.characters}/${limit} (${left >= 0 ? `${left} ${fa ? 'باقی' : 'left'}` : `${-left} ${fa ? 'اضافه' : 'over'}`})`;
       })
       .join('\n');
-    return {
-      html: `${fa ? `🔤 کاراکتر: <b>${chars}</b> • کلمه: <b>${words}</b>` : `🔤 Characters: <b>${chars}</b> • Words: <b>${words}</b>`}\n${DIVIDER}\n${rows}`,
+
+    const label = (key: keyof typeof stats): string => {
+      const names: Record<keyof typeof stats, [string, string]> = {
+        characters: ['🔤 کاراکتر (با فاصله)', '🔤 Characters (with spaces)'],
+        charactersNoSpaces: ['🔡 کاراکتر (بدون فاصله)', '🔡 Characters (no spaces)'],
+        words: ['📝 کلمه', '📝 Words'],
+        lines: ['📏 خط', '📏 Lines'],
+        sentences: ['🗣 جمله', '🗣 Sentences'],
+        paragraphs: ['📑 پاراگراف', '📑 Paragraphs'],
+        readingSeconds: ['⏱ زمان مطالعه', '⏱ Reading time'],
+      };
+      const pair = names[key];
+      return fa ? pair[0] : pair[1];
     };
+
+    const minutes = Math.floor(stats.readingSeconds / 60);
+    const seconds = stats.readingSeconds % 60;
+    const readingText = minutes > 0
+      ? `${minutes} ${fa ? 'دقیقه' : 'min'} ${seconds} ${fa ? 'ثانیه' : 's'}`
+      : `${seconds} ${fa ? 'ثانیه' : 's'}`;
+
+    const body = [
+      `${label('characters')}: <b>${stats.characters}</b>`,
+      `${label('charactersNoSpaces')}: <b>${stats.charactersNoSpaces}</b>`,
+      `${label('words')}: <b>${stats.words}</b>`,
+      `${label('lines')}: <b>${stats.lines}</b>`,
+      `${label('sentences')}: <b>${stats.sentences}</b>`,
+      `${label('paragraphs')}: <b>${stats.paragraphs}</b>`,
+      `${label('readingSeconds')}: ${readingText}`,
+    ].join('\n');
+
+    return { html: `${body}\n${DIVIDER}\n${rows}` };
   },
 });
 

@@ -3,9 +3,18 @@ import type { ToolDefinition } from '../tools/types.js';
 import type { UserRow, GlobalStats, ToolUsageRow, DailyPoint } from '../db/queries.js';
 import { t, pick } from '../localization/index.js';
 import { APP, LIMITS, RATE_LIMIT } from '../config/index.js';
-import { CATEGORIES, TOTAL_TOOLS, categoryMeta, getTool, type Page } from '../tools/registry.js';
+import {
+  CATEGORIES,
+  TOTAL_TOOLS,
+  categoryMeta,
+  getTool,
+  groupMeta,
+  populatedGroups,
+  toolsByGroup,
+  type Page,
+} from '../tools/registry.js';
 import { DIVIDER, escapeHtml, mono } from '../utils/text.js';
-import type { ToolCategory } from '../tools/types.js';
+import type { EverydayGroup, ToolCategory } from '../tools/types.js';
 
 const faDigits = (value: number | string): string => String(value);
 
@@ -59,6 +68,69 @@ export function categoryPage(lang: Lang, category: ToolCategory, page: Page<Tool
     .join('\n');
 }
 
+/**
+ * Landing page for 🧰 Everyday Tools: a directory of its sub-sections rather
+ * than page 1 of a long flat list.
+ */
+export function everydayPage(lang: Lang): string {
+  const meta = categoryMeta('everyday');
+  const total = CATEGORIES.length > 0 ? populatedGroups().reduce((sum, g) => sum + toolsByGroup(g.id).length, 0) : 0;
+  const lines = populatedGroups().map((group) => {
+    const tools = toolsByGroup(group.id);
+    const sample = tools
+      .slice(0, 4)
+      .map((tool) => pick(lang, tool.title))
+      .join('، ');
+    return `${group.icon} <b>${pick(lang, group.title)}</b> · ${tools.length}\n   <i>${escapeHtml(shorten(sample, 80))}</i>`;
+  });
+  return [
+    `${meta?.icon ?? '🧰'} <b>${meta ? pick(lang, meta.title) : t(lang, 'cat_everyday')}</b>`,
+    DIVIDER,
+    meta ? `<i>${pick(lang, meta.description)}</i>` : '',
+    '',
+    lines.join('\n'),
+    '',
+    t(lang, 'category_body', { count: total, page: 1, pages: 1 }),
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
+/** One sub-section of 🧰 Everyday Tools. */
+export function everydayGroupPage(lang: Lang, group: EverydayGroup, page: Page<ToolDefinition>): string {
+  const meta = groupMeta(group);
+  const list = page.items
+    .map((tool) => `${tool.icon} <b>${pick(lang, tool.title)}</b>\n   <i>${escapeHtml(shorten(pick(lang, tool.description)))}</i>`)
+    .join('\n');
+  return [
+    `${meta?.icon ?? '🧰'} <b>${meta ? pick(lang, meta.title) : group}</b>`,
+    DIVIDER,
+    list,
+    '',
+    t(lang, 'category_body', { count: page.total, page: page.page, pages: page.pages }),
+  ].join('\n');
+}
+
+/** ⭐ My Favorites. */
+export function favoritesPage(lang: Lang, page: Page<ToolDefinition>): string {
+  if (page.total === 0) {
+    return [t(lang, 'fav_title'), DIVIDER, t(lang, 'fav_empty')].join('\n');
+  }
+  const list = page.items
+    .map((tool) => {
+      const meta = categoryMeta(tool.category);
+      return `${tool.icon} <b>${pick(lang, tool.title)}</b>\n   <i>${meta ? `${meta.icon} ${pick(lang, meta.title)}` : ''}</i>`;
+    })
+    .join('\n');
+  return [
+    t(lang, 'fav_title'),
+    DIVIDER,
+    list,
+    '',
+    t(lang, 'fav_body', { count: page.total, page: page.page, pages: page.pages }),
+  ].join('\n');
+}
+
 export function quickPage(lang: Lang, page: Page<ToolDefinition>): string {
   const list = page.items.map((tool) => `${tool.icon} <b>${pick(lang, tool.title)}</b>`).join('\n');
   const body =
@@ -75,9 +147,16 @@ function shorten(text: string, max = 90): string {
 
 export function toolPage(lang: Lang, tool: ToolDefinition): string {
   const meta = categoryMeta(tool.category);
+  const group = tool.group ? groupMeta(tool.group) : undefined;
+  const breadcrumb = [
+    meta ? `${meta.icon} ${pick(lang, meta.title)}` : '',
+    group ? `${group.icon} ${pick(lang, group.title)}` : '',
+  ]
+    .filter(Boolean)
+    .join(' › ');
   const rows = [
     `${tool.icon} <b>${pick(lang, tool.title)}</b>`,
-    meta ? `<i>${meta.icon} ${pick(lang, meta.title)}${tool.network ? (lang === 'fa' ? ' • نیازمند شبکه' : ' • network') : ''}</i>` : '',
+    breadcrumb ? `<i>${breadcrumb}${tool.network ? (lang === 'fa' ? ' • نیازمند شبکه' : ' • network') : ''}</i>` : '',
     DIVIDER,
     `${t(lang, 'tool_desc_label')}\n${pick(lang, tool.description)}`,
     '',
