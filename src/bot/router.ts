@@ -207,7 +207,7 @@ async function handleMessage(message: TgMessage, env: Env, waitUntil: (p: Promis
     await ctx.tg.sendMessage(
       ctx.chatId,
       P.errorPage(ctx.lang, t(ctx.lang, 'err_unknown_action')),
-      UI.homeKeyboard(ctx.lang),
+      UI.homeKeyboard(ctx.lang, ctx.env.APP_URL),
     );
     return;
   }
@@ -219,7 +219,7 @@ async function handleMessage(message: TgMessage, env: Env, waitUntil: (p: Promis
         ? 'برای اجرای یک ابزار ابتدا آن را از جعبه‌ابزار انتخاب کنید.'
         : 'Pick a tool from the toolbox first, then send your input.'
     }</i>`,
-    UI.homeKeyboard(ctx.lang),
+    UI.homeKeyboard(ctx.lang, ctx.env.APP_URL),
   );
 }
 
@@ -386,20 +386,20 @@ async function handleCommand(ctx: BotContext, text: string): Promise<void> {
       return;
     case '/cancel':
       await clearPending(ctx.env.STATE, ctx.user.id);
-      await ctx.tg.sendMessage(ctx.chatId, t(ctx.lang, 'tool_cancelled'), UI.homeKeyboard(ctx.lang));
+      await ctx.tg.sendMessage(ctx.chatId, t(ctx.lang, 'tool_cancelled'), UI.homeKeyboard(ctx.lang, ctx.env.APP_URL));
       return;
     case '/tool': {
       const id = (args[0] ?? '').toLowerCase();
       const screen = S.toolScreen(ctx, id);
       if (!screen) {
-        await ctx.tg.sendMessage(ctx.chatId, P.errorPage(ctx.lang, t(ctx.lang, 'err_unknown_tool')), UI.homeKeyboard(ctx.lang));
+        await ctx.tg.sendMessage(ctx.chatId, P.errorPage(ctx.lang, t(ctx.lang, 'err_unknown_tool')), UI.homeKeyboard(ctx.lang, ctx.env.APP_URL));
         return;
       }
       await send(ctx, screen);
       return;
     }
     default:
-      await ctx.tg.sendMessage(ctx.chatId, P.errorPage(ctx.lang, t(ctx.lang, 'err_unknown_action')), UI.homeKeyboard(ctx.lang));
+      await ctx.tg.sendMessage(ctx.chatId, P.errorPage(ctx.lang, t(ctx.lang, 'err_unknown_action')), UI.homeKeyboard(ctx.lang, ctx.env.APP_URL));
   }
 }
 

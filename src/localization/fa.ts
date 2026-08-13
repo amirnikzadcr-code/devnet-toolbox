@@ -9,6 +9,7 @@ export const fa = {
   home_hint: '👇 یکی از بخش‌های زیر را انتخاب کنید',
 
   btn_toolbox: '🧰 جعبه‌ابزار',
+  btn_miniapp: '🚀 اپلیکیشن',
   btn_quick: '⚡ ابزار سریع',
   btn_profile: '👤 پروفایل',
   btn_settings: '⚙️ تنظیمات',

@@ -11,6 +11,7 @@
   "vars": {
     "ENVIRONMENT": "production",
     "BOT_USERNAME": "Toolsbotxbot",
+    "APP_URL": "https://devnet-app.nikiaaaaacr.workers.dev",
     "REPO_URL": "https://github.com/amirnikzadcr-code/devnet-toolbox"
   },
   "kv_namespaces": [

@@ -57,8 +57,17 @@ export function navRow(lang: Lang, backTo?: string): InlineKeyboardButton[] {
   return row;
 }
 
-export function homeKeyboard(lang: Lang): InlineKeyboardMarkup {
+/** Opens the Mini App. Telegram only accepts https URLs here. */
+const webApp = (text: string, url: string): InlineKeyboardButton => ({ text, web_app: { url } });
+
+/**
+ * @param appUrl When set, a Mini App launch button is prepended. Every existing
+ *   button is preserved: the app is an additional entry point, not a
+ *   replacement for the inline flows.
+ */
+export function homeKeyboard(lang: Lang, appUrl?: string): InlineKeyboardMarkup {
   return kb([
+    appUrl ? [webApp(t(lang, 'btn_miniapp'), appUrl)] : [],
     [btn(t(lang, 'btn_toolbox'), CB.toolbox), btn(t(lang, 'btn_quick'), CB.quick)],
     // Phase 2: the security section gets a full-width row of its own — it is a
     // distinct workflow (uploads, reports), not just another tool category.

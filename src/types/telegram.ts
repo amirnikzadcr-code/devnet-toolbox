@@ -75,6 +75,8 @@ export interface InlineKeyboardButton {
   callback_data?: string;
   url?: string;
   switch_inline_query_current_chat?: string;
+  /** Launches a Mini App. Telegram requires an https URL. */
+  web_app?: { url: string };
 }
 
 export interface InlineKeyboardMarkup {

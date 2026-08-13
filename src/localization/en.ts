@@ -8,6 +8,7 @@ export const en = {
   home_hint: '👇 Pick a section below',
 
   btn_toolbox: '🧰 Toolbox',
+  btn_miniapp: '🚀 Open App',
   btn_quick: '⚡ Quick Tools',
   btn_profile: '👤 Profile',
   btn_settings: '⚙️ Settings',

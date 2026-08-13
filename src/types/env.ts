@@ -12,6 +12,8 @@ export interface Env {
 
   /** Var: public bot username used in About page (no @). */
   BOT_USERNAME?: string;
+  /** https URL of the Mini App. When unset the launch button is hidden. */
+  APP_URL?: string;
   /** Var: public repository URL shown in About. */
   REPO_URL?: string;
   /** Var: "production" | "staging" | "development". */

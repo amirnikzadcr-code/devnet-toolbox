@@ -364,4 +364,4 @@ export function alertMessage(report: RiskReport, ctx: BotContext): string | null
   return banner === '' ? null : banner;
 }
 
-export const securityHomeKeyboard = (ctx: BotContext) => UI.homeKeyboard(ctx.lang);
+export const securityHomeKeyboard = (ctx: BotContext) => UI.homeKeyboard(ctx.lang, ctx.env.APP_URL);

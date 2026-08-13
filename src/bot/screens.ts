@@ -25,7 +25,7 @@ export interface Screen {
 }
 
 export function homeScreen(ctx: BotContext): Screen {
-  return { text: P.homePage(ctx.lang), keyboard: UI.homeKeyboard(ctx.lang) };
+  return { text: P.homePage(ctx.lang), keyboard: UI.homeKeyboard(ctx.lang, ctx.env.APP_URL) };
 }
 
 export function toolboxScreen(ctx: BotContext): Screen {

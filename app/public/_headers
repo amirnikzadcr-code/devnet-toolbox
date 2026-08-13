@@ -1,0 +1,27 @@
+#
+# Security headers for the Mini App shell.
+#
+# These live in `_headers` rather than in the Worker because a request that
+# matches a static asset is served straight from Cloudflare's edge WITHOUT
+# invoking the Worker — that is what makes asset requests free and unmetered,
+# so header logic in `src/index.ts` would simply never run for them.
+#
+# Note on framing: Telegram Desktop and Web load the Mini App inside a
+# telegram.org iframe, so `frame-ancestors` must ALLOW Telegram. Sending
+# `X-Frame-Options: DENY` here would render a permanently blank app.
+#
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=(), usb=()
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://telegram.org; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-ancestors https://web.telegram.org https://telegram.org https://*.telegram.org; base-uri 'none'; form-action 'none'; object-src 'none'
+
+# Content-hashed bundles are immutable; the shell must never be cached stale.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/index.html
+  Cache-Control: no-cache

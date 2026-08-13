@@ -1,0 +1,29 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "devnet-app",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-01-15",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "observability": { "enabled": true },
+  "assets": {
+    "directory": "../app/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application"
+  },
+  "vars": {
+    "BOT_USERNAME": "Toolsbotxbot"
+  },
+  "kv_namespaces": [
+    { "binding": "STATE", "id": "e7ffd4520d984dc6bc8a8bfde311066b" }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "devnet_toolbox",
+      "database_id": "276da91c-b835-4c6a-ba6f-b06e31704c5f"
+    }
+  ]
+  // Secrets (never in this file):
+  //   BOT_TOKEN — wrangler secret put BOT_TOKEN --config app-worker/wrangler.jsonc
+}
