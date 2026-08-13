@@ -246,4 +246,51 @@ describe('originAllowed', () => {
     });
     expect(originAllowed(request)).toBe(false);
   });
+
+  /**
+   * Regression: a referrer policy of `no-referrer` (which this panel used to
+   * send) makes browsers submit forms with `Origin: null`. Rejecting that
+   * locked the real admin out of the login form with a 403 while every
+   * synthetic test still passed, because the fakes sent a textbook Origin.
+   * Fetch Metadata is the header that survives the referrer policy.
+   */
+  it('allows a same-origin form POST that the referrer policy nulled the Origin on', () => {
+    const request = new Request('https://admin.dev/login', {
+      method: 'POST',
+      headers: { origin: 'null', 'sec-fetch-site': 'same-origin' },
+    });
+    expect(originAllowed(request)).toBe(true);
+  });
+
+  it('allows a user-initiated navigation POST (Sec-Fetch-Site: none)', () => {
+    const request = new Request('https://admin.dev/login', {
+      method: 'POST',
+      headers: { 'sec-fetch-site': 'none' },
+    });
+    expect(originAllowed(request)).toBe(true);
+  });
+
+  it('rejects a cross-site POST even when its Origin header looks right', () => {
+    const request = new Request('https://admin.dev/broadcast', {
+      method: 'POST',
+      headers: { origin: 'https://admin.dev', 'sec-fetch-site': 'cross-site' },
+    });
+    expect(originAllowed(request)).toBe(false);
+  });
+
+  it('rejects a same-site but different-origin POST (sibling subdomain)', () => {
+    const request = new Request('https://admin.dev/broadcast', {
+      method: 'POST',
+      headers: { origin: 'null', 'sec-fetch-site': 'same-site' },
+    });
+    expect(originAllowed(request)).toBe(false);
+  });
+
+  it('still rejects a bare Origin: null with no Fetch Metadata', () => {
+    const request = new Request('https://admin.dev/broadcast', {
+      method: 'POST',
+      headers: { origin: 'null' },
+    });
+    expect(originAllowed(request)).toBe(false);
+  });
 });

@@ -66,7 +66,11 @@ const SECURITY_HEADERS: Record<string, string> = {
     "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
   'x-content-type-options': 'nosniff',
   'x-frame-options': 'DENY',
-  'referrer-policy': 'no-referrer',
+  // `same-origin` keeps referrers off every cross-origin request (the privacy
+  // goal) while still letting the browser send a real `Origin` header on the
+  // panel's own form submissions. `no-referrer` would force `Origin: null`
+  // there and trip the CSRF check in originAllowed().
+  'referrer-policy': 'same-origin',
   'permissions-policy': 'geolocation=(), microphone=(), camera=()',
   'cache-control': 'no-store, max-age=0',
 };

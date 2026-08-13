@@ -171,10 +171,26 @@ export function clearedCookie(): string {
 }
 
 /**
- * CSRF defence. The panel is same-origin only, so a mismatched Origin on a
- * state-changing request is rejected outright rather than merely logged.
+ * CSRF defence. The panel is same-origin only, so a state-changing request
+ * that did not come from this origin is rejected outright rather than merely
+ * logged.
+ *
+ * Fetch Metadata (`Sec-Fetch-Site`) is checked first because it is set by the
+ * browser, cannot be forged by a page, and — unlike `Origin` — is unaffected
+ * by our referrer policy. That matters: a `Referrer-Policy` of `no-referrer`
+ * (and several other values) makes the browser send `Origin: null` on ordinary
+ * form submissions, so a naive Origin comparison rejects the panel's own login
+ * form. Origin remains the fallback for clients that omit Fetch Metadata.
  */
 export function originAllowed(request: Request): boolean {
+  const site = request.headers.get('sec-fetch-site');
+  if (site !== null) {
+    // `none` is a user-initiated navigation (typed URL, bookmark), which no
+    // attacker page can produce; anything cross-site or same-site-but-other-
+    // origin is refused.
+    return site === 'same-origin' || site === 'none';
+  }
+
   const origin = request.headers.get('origin');
   if (origin === null) return true; // non-browser client (curl, tests)
   try {
