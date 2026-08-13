@@ -8,7 +8,18 @@
     />
     <meta name="color-scheme" content="dark light" />
     <title>DevNet Toolbox</title>
-    <script src="https://telegram.org/js/telegram-web-app.js?58"></script>
+    <!--
+      Self-hosted deliberately.
+
+      Loading this from telegram.org makes the whole app depend on the user's
+      own network being able to reach that domain: the in-app WebView browses
+      through the user's connection, not through Telegram's transport. Where
+      telegram.org is blocked or throttled, `window.Telegram` never appears,
+      initData comes back empty and the app dies on a 401 — even though
+      Telegram itself works fine. Serving it from our own origin removes that
+      dependency (and one cross-origin round trip on every launch).
+    -->
+    <script src="/telegram-web-app.js?58"></script>
   </head>
   <body>
     <div id="root"></div>

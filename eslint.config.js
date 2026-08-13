@@ -4,7 +4,15 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['dist/**', '**/dist/**', 'node_modules/**', '.wrangler/**', 'coverage/**'],
+    ignores: [
+      'dist/**',
+      '**/dist/**',
+      'node_modules/**',
+      '.wrangler/**',
+      'coverage/**',
+      // Vendored verbatim from telegram.org; not ours to lint or modify.
+      'app/public/telegram-web-app.js',
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

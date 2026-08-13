@@ -7,7 +7,7 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError, type CatalogResponse, type ToolMeta } from './lib/api';
-import { boot, backButton, haptic, colorScheme, onEvent, mainButton, inTelegram } from './lib/telegram';
+import { boot, backButton, haptic, colorScheme, onEvent, mainButton, inTelegram, hasLaunchData } from './lib/telegram';
 import { Screen, motion } from './components/Motion';
 import { ToastHost, useToast } from './components/Bits';
 import { Home } from './screens/Home';
@@ -55,11 +55,24 @@ export default function App(): React.ReactElement {
       })
       .catch((error: unknown) => {
         if (!alive) return;
-        setFatal(
-          error instanceof ApiError && error.status === 401
-            ? 'این اپ باید از داخل تلگرام باز شود.'
-            : 'بارگذاری فهرست ابزارها ناموفق بود.',
-        );
+        const status = error instanceof ApiError ? error.status : -1;
+        if (status === 401) {
+          // Distinguish the two very different causes of a 401. If Telegram
+          // handed us launch data and the server still rejected it, telling
+          // the user to "open from Telegram" is wrong and unactionable — they
+          // already did. That case is a stale/expired launch instead.
+          setFatal(
+            hasLaunchData()
+              ? 'نشست شما منقضی شده. اپ را ببندید و دوباره از ربات باز کنید.'
+              : 'اطلاعات ورود از تلگرام دریافت نشد. اپ را ببندید و دوباره از منوی ربات باز کنید.',
+          );
+        } else if (status === 0 || status === 408) {
+          setFatal('اتصال به سرور برقرار نشد. اینترنت خود را بررسی کنید.');
+        } else if (status === 429) {
+          setFatal('درخواست‌ها بیش از حد سریع بود. کمی صبر کنید.');
+        } else {
+          setFatal('بارگذاری فهرست ابزارها ناموفق بود.');
+        }
       });
     return () => {
       alive = false;
@@ -143,7 +156,7 @@ export default function App(): React.ReactElement {
               <div style={{ fontSize: 44, marginBottom: 10 }}>{inTelegram() ? '⚠️' : '📱'}</div>
               <div className="h2">{fatal}</div>
               <div className="muted" style={{ marginTop: 8 }}>
-                {inTelegram() ? 'کمی بعد دوباره تلاش کنید.' : 'ربات @Toolsbotxbot را باز کنید و از منو وارد شوید.'}
+                {inTelegram() ? 'اگر ادامه داشت، تلگرام را ببندید و دوباره باز کنید.' : 'ربات @Toolsbotxbot را باز کنید و از منو وارد شوید.'}
               </div>
             </motion.div>
           </div>

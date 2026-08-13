@@ -7,6 +7,8 @@
  * whole module degrades to no-ops so the UI still renders.
  */
 
+import { initDataFromUrl } from './launch-data';
+
 interface HapticImpl {
   impactOccurred?: (style: string) => void;
   notificationOccurred?: (type: string) => void;
@@ -54,7 +56,7 @@ declare global {
 }
 
 export const tg = (): WebAppImpl | undefined => window.Telegram?.WebApp;
-export const inTelegram = (): boolean => Boolean(tg()?.initData);
+export const inTelegram = (): boolean => Boolean(tg()?.initData) || Boolean(window.Telegram?.WebApp);
 
 /** Numeric platform version, for capability gates ("8.0" → 8.0). */
 function version(): number {
@@ -124,9 +126,22 @@ export function colorScheme(): 'light' | 'dark' {
   return tg()?.colorScheme ?? 'dark';
 }
 
+export { initDataFromUrl };
+
+/**
+ * The raw initData string sent to our API.
+ *
+ * Order matters: the SDK's value is authoritative when present, and the URL is
+ * only consulted when the SDK is unavailable or gave us nothing. Telegram
+ * clears the fragment on some clients after boot, so the SDK's cached copy is
+ * the more reliable of the two.
+ */
 export function initData(): string {
-  return tg()?.initData ?? '';
+  return tg()?.initData || initDataFromUrl(window.location.hash, window.location.search);
 }
+
+/** True when Telegram handed us launch data by either route. */
+export const hasLaunchData = (): boolean => initData().length > 0;
 
 export function tgUser(): { id: number; first_name?: string; username?: string; language_code?: string } | undefined {
   return tg()?.initDataUnsafe?.user;
