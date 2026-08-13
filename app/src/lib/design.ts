@@ -75,3 +75,14 @@ export function faNum(value: number | string, lang: 'fa' | 'en' = 'fa'): string 
   if (lang !== 'fa') return text;
   return text.replace(/\d/g, (digit) => FA_DIGITS[Number(digit)]);
 }
+
+/**
+ * Digits without grouping separators — for identifiers, not quantities.
+ * A Telegram user id is a label; rendering it as "7,951,577,342" invites the
+ * reader to parse it as an amount and makes it useless to copy by eye.
+ */
+export function faDigits(value: number | string, lang: 'fa' | 'en' = 'fa'): string {
+  const text = String(value);
+  if (lang !== 'fa') return text;
+  return text.replace(/\d/g, (digit) => FA_DIGITS[Number(digit)]);
+}

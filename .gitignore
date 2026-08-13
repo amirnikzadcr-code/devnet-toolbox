@@ -59,3 +59,6 @@ pnpm-debug.log*
 .cache/
 tmp/
 wrangler.local.jsonc
+
+# ─── UI test artefacts ───────────────────────────────────────
+app/e2e/*.png

@@ -4,10 +4,11 @@
  */
 import { useEffect, useState } from 'react';
 import { api, type CatalogResponse } from '../lib/api';
-import { faNum, gradientFor } from '../lib/design';
+import { faDigits, faNum, gradientFor } from '../lib/design';
 import { haptic, closeApp, requestFullscreen } from '../lib/telegram';
 import { motion, Stagger, StaggerItem, Press } from '../components/Motion';
 import { Segmented, StatCard } from '../components/Bits';
+import { Icon, toolIcon } from '../components/Icon';
 
 interface Props {
   catalog: CatalogResponse | null;
@@ -38,7 +39,8 @@ export function Profile({ catalog, favoritesCount, onLang, onToast }: Props): Re
 
   const nameOf = (toolId: string): string =>
     catalog?.tools.find((tool) => tool.id === toolId)?.title ?? toolId;
-  const iconOf = (toolId: string): string => catalog?.tools.find((tool) => tool.id === toolId)?.icon ?? '🔧';
+  const categoryOf = (toolId: string): string =>
+    catalog?.tools.find((tool) => tool.id === toolId)?.category ?? 'utilities';
 
   return (
     <div className="scroll">
@@ -76,11 +78,11 @@ export function Profile({ catalog, favoritesCount, onLang, onToast }: Props): Re
             boxShadow: '0 18px 42px -12px rgba(99,102,241,0.8)',
           }}
         >
-          {catalog?.user.name?.trim()?.charAt(0)?.toUpperCase() || '👤'}
+          {catalog?.user.name?.trim()?.charAt(0)?.toUpperCase() || <Icon name="user" size={32} />}
         </motion.div>
         <div className="h2">{catalog?.user.name ?? '—'}</div>
         <div className="tiny" style={{ marginTop: 3 }}>
-          شناسه: <span className="num">{catalog ? faNum(catalog.user.id) : '—'}</span>
+          شناسه: <span className="num">{catalog ? faDigits(catalog.user.id) : '—'}</span>
         </div>
       </motion.div>
 
@@ -88,21 +90,21 @@ export function Profile({ catalog, favoritesCount, onLang, onToast }: Props): Re
       <Stagger className="grid" >
         <StaggerItem>
           <StatCard
-            icon="⚡"
+            icon="bolt"
             label="اجرای ابزار"
             value={stats ? faNum(stats.totalRuns) : '…'}
             category="programming"
           />
         </StaggerItem>
         <StaggerItem>
-          <StatCard icon="🧩" label="ابزار متمایز" value={stats ? faNum(stats.distinct) : '…'} category="network" />
+          <StatCard icon="puzzle" label="ابزار متمایز" value={stats ? faNum(stats.distinct) : '…'} category="network" />
         </StaggerItem>
         <StaggerItem>
-          <StatCard icon="⭐" label="منتخب‌ها" value={faNum(favoritesCount)} category="favorites" />
+          <StatCard icon="star" label="منتخب‌ها" value={faNum(favoritesCount)} category="favorites" />
         </StaggerItem>
         <StaggerItem>
           <StatCard
-            icon="🧰"
+            icon="toolbox"
             label="ابزار در دسترس"
             value={catalog ? faNum(catalog.tools.length) : '…'}
             category="everyday"
@@ -113,8 +115,9 @@ export function Profile({ catalog, favoritesCount, onLang, onToast }: Props): Re
       {/* ─── Most used ─────────────────────────────────────────────── */}
       {stats && stats.topTools.length > 0 && (
         <section style={{ marginTop: 22 }}>
-          <h2 className="h2" style={{ marginBottom: 11 }}>
-            📊 پرکاربردترین‌های شما
+          <h2 className="h2" style={{ marginBottom: 11, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Icon name="chart" size={17} />
+            پرکاربردترین‌های شما
           </h2>
           <div className="card" style={{ padding: 6 }}>
             {stats.topTools.slice(0, 5).map((row, index) => {
@@ -140,8 +143,9 @@ export function Profile({ catalog, favoritesCount, onLang, onToast }: Props): Re
                     }}
                   />
                   <div className="row between" style={{ position: 'relative' }}>
-                    <span style={{ fontSize: 13.5 }}>
-                      {iconOf(row.toolId)} {nameOf(row.toolId)}
+                    <span style={{ fontSize: 13.5, display: 'inline-flex', alignItems: 'center', gap: 9 }}>
+                      <Icon name={toolIcon(row.toolId, categoryOf(row.toolId))} size={16} />
+                      {nameOf(row.toolId)}
                     </span>
                     <span className="tiny num">{faNum(row.uses)}</span>
                   </div>
@@ -154,8 +158,9 @@ export function Profile({ catalog, favoritesCount, onLang, onToast }: Props): Re
 
       {/* ─── Language ──────────────────────────────────────────────── */}
       <section style={{ marginTop: 22 }}>
-        <h2 className="h2" style={{ marginBottom: 11 }}>
-          🌐 زبان
+        <h2 className="h2" style={{ marginBottom: 11, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Icon name="globe" size={17} />
+          زبان
         </h2>
         <Segmented
           idPrefix="lang"
@@ -181,7 +186,8 @@ export function Profile({ catalog, favoritesCount, onLang, onToast }: Props): Re
             requestFullscreen();
           }}
         >
-          ⛶ حالت تمام‌صفحه
+          <Icon name="expand" size={16} />
+          حالت تمام‌صفحه
         </Press>
         <Press
           className="btn btn-ghost"
@@ -191,7 +197,8 @@ export function Profile({ catalog, favoritesCount, onLang, onToast }: Props): Re
             closeApp();
           }}
         >
-          ✕ بستن اپ
+          <Icon name="exit" size={16} />
+          بستن اپ
         </Press>
       </section>
 

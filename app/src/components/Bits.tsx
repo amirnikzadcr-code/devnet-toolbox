@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence, SPRING, Press } from './Motion';
 import { haptic } from '../lib/telegram';
 import { auraFor, gradientFor } from '../lib/design';
+import { Icon, categoryIcon, toolIcon, type IconName } from './Icon';
 import type { ToolMeta } from '../lib/api';
 
 /* ─── Segmented control with a sliding pill ──────────────────────────── */
@@ -82,37 +83,27 @@ export function ToolTile({
       tabIndex={0}
     >
       <span className="aura" style={{ background: auraFor(tool.category, tool.id) }} />
-      <span className="emoji">{tool.icon}</span>
+      <span className="badge" style={{ background: gradientFor(tool.category) }}>
+        <Icon name={toolIcon(tool.id, tool.category)} size={21} />
+      </span>
       <span className="name">{tool.title}</span>
-      <span className="tiny" style={{ marginTop: 'auto', opacity: 0.75 }}>
-        {tool.network ? '🌐 آنلاین' : tool.file ? '📎 فایل' : '⚡ آفلاین'}
+      <span className="flag" data-kind={tool.network ? 'net' : tool.file ? 'file' : 'fast'}>
+        <Icon name={tool.network ? 'globe' : tool.file ? 'paperclip' : 'bolt'} size={11} strokeWidth={2} />
+        {tool.network ? 'آنلاین' : tool.file ? 'فایل' : 'آفلاین'}
       </span>
       <button
         type="button"
-        aria-label="favorite"
+        className="star-btn"
+        data-on={starred ? '1' : '0'}
+        aria-label={starred ? 'حذف از منتخب‌ها' : 'افزودن به منتخب‌ها'}
+        aria-pressed={starred}
         onClick={(event) => {
           event.stopPropagation();
           haptic.press();
           onStar();
         }}
-        style={{
-          position: 'absolute',
-          top: 8,
-          insetInlineEnd: 8,
-          width: 30,
-          height: 30,
-          border: 0,
-          borderRadius: 10,
-          background: starred ? 'rgba(251,191,36,0.16)' : 'transparent',
-          color: starred ? '#fbbf24' : 'var(--text-3)',
-          fontSize: 15,
-          cursor: 'pointer',
-          display: 'grid',
-          placeItems: 'center',
-          transition: 'background .2s, color .2s',
-        }}
       >
-        {starred ? '★' : '☆'}
+        <Icon name="star" size={16} filled={starred} strokeWidth={1.8} />
       </button>
     </motion.div>
   );
@@ -129,25 +120,38 @@ export function CategoryChips({
   onChange: (id: string) => void;
 }): React.ReactElement {
   return (
-    <div
-      className="row wrap"
-      style={{ gap: 8, overflowX: 'auto', flexWrap: 'nowrap', paddingBottom: 4, scrollbarWidth: 'none' }}
-    >
-      {categories.map((category) => (
-        <Press
-          key={category.id}
-          className="chip"
-          data-on={category.id === value ? '1' : '0'}
-          onClick={() => {
-            haptic.select();
-            onChange(category.id);
-          }}
-        >
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            {category.icon} {category.title}
-          </span>
-        </Press>
-      ))}
+    <div className="rail" style={{ gap: 8 }}>
+      {categories.map((category) => {
+        const on = category.id === value;
+        return (
+          <Press
+            key={category.id}
+            className="chip"
+            data-on={on ? '1' : '0'}
+            onClick={() => {
+              haptic.select();
+              onChange(category.id);
+            }}
+          >
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <Icon name={categoryIcon(category.id)} size={14} strokeWidth={1.9} />
+              {category.title}
+              <span
+                className="num"
+                style={{
+                  fontSize: 10.5,
+                  padding: '1px 6px',
+                  borderRadius: 999,
+                  background: on ? 'rgba(255,255,255,0.22)' : 'var(--surface-hi)',
+                  color: on ? '#fff' : 'var(--text-3)',
+                }}
+              >
+                {category.count}
+              </span>
+            </span>
+          </Press>
+        );
+      })}
     </div>
   );
 }
@@ -227,7 +231,7 @@ export function StatCard({
 }: {
   label: string;
   value: string;
-  icon: string;
+  icon: IconName;
   category: string;
 }): React.ReactElement {
   return (
@@ -245,8 +249,10 @@ export function StatCard({
           background: gradientFor(category),
         }}
       />
-      <div style={{ fontSize: 19 }}>{icon}</div>
-      <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', marginTop: 2 }} className="num">
+      <span className="badge badge-sm" style={{ background: gradientFor(category) }}>
+        <Icon name={icon} size={17} />
+      </span>
+      <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', marginTop: 8 }} className="num">
         {value}
       </div>
       <div className="tiny">{label}</div>

@@ -40,7 +40,17 @@ export function StaggerItem({ children, className }: { children: ReactNode; clas
   );
 }
 
-/** Screen container: slides according to navigation direction. */
+/**
+ * Screen container: slides according to navigation direction.
+ *
+ * The layout contract matters as much as the animation. `.shell` is a flex
+ * column and each screen's `.scroll` claims the leftover space with `flex:1`.
+ * This wrapper sits between them, so it must forward the constraint rather
+ * than break it: it is itself a flex column with `min-height:0`. Without that,
+ * `.scroll` has no bounded parent, grows to its content height, overflows the
+ * shell, and `body{overflow:hidden}` silently clips it — the app looks frozen
+ * because nothing can scroll.
+ */
 export function Screen({
   children,
   keyName,
@@ -54,12 +64,12 @@ export function Screen({
     <AnimatePresence mode="popLayout" initial={false} custom={direction}>
       <motion.div
         key={keyName}
+        className="screen"
         custom={direction}
-        initial={{ opacity: 0, x: direction * 26, scale: 0.985 }}
-        animate={{ opacity: 1, x: 0, scale: 1 }}
-        exit={{ opacity: 0, x: direction * -22, scale: 0.985 }}
+        initial={{ opacity: 0, x: direction * 26 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: direction * -22 }}
         transition={{ ...SPRING_SOFT, opacity: { duration: 0.18 } }}
-        style={{ height: '100%' }}
       >
         {children}
       </motion.div>

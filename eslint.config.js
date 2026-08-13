@@ -12,6 +12,8 @@ export default tseslint.config(
       'coverage/**',
       // Vendored verbatim from telegram.org; not ours to lint or modify.
       'app/public/telegram-web-app.js',
+      // Node-side UI harness; its evaluate() bodies run in a browser realm.
+      'app/e2e/**',
     ],
   },
   js.configs.recommended,

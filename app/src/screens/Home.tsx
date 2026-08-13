@@ -12,6 +12,7 @@ import { faNum, gradientFor } from '../lib/design';
 import { haptic } from '../lib/telegram';
 import { motion, Stagger, StaggerItem, Press } from '../components/Motion';
 import { CategoryChips, ToolTile, TileSkeletons } from '../components/Bits';
+import { Icon, LogoMark, toolIcon } from '../components/Icon';
 
 interface Props {
   catalog: CatalogResponse | null;
@@ -25,7 +26,7 @@ export function Home({ catalog, favorites, onOpen, onStar }: Props): React.React
   const [category, setCategory] = useState('all');
 
   const categories = useMemo(() => {
-    const base = [{ id: 'all', icon: '✨', title: 'همه', count: catalog?.tools.length ?? 0 }];
+    const base = [{ id: 'all', icon: 'all', title: 'همه', count: catalog?.tools.length ?? 0 }];
     return base.concat(catalog?.categories ?? []);
   }, [catalog]);
 
@@ -60,7 +61,7 @@ export function Home({ catalog, favorites, onOpen, onStar }: Props): React.React
         <div className="row between" style={{ alignItems: 'flex-start' }}>
           <div>
             <div className="tiny" style={{ marginBottom: 2 }}>
-              {catalog ? `سلام ${catalog.user.name} 👋` : '\u00a0'}
+              {catalog ? `سلام ${catalog.user.name}` : '\u00a0'}
             </div>
             <h1 className="h1">
               <span className="gradient-text">DevNet</span> Toolbox
@@ -78,19 +79,13 @@ export function Home({ catalog, favorites, onOpen, onStar }: Props): React.React
           <motion.div
             animate={{ rotate: [0, 8, -6, 0], scale: [1, 1.06, 1] }}
             transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+            className="badge badge-lg"
             style={{
-              width: 54,
-              height: 54,
-              borderRadius: 18,
-              display: 'grid',
-              placeItems: 'center',
-              fontSize: 27,
               background: 'var(--grad-brand)',
               boxShadow: '0 14px 34px -10px rgba(99,102,241,0.75)',
-              flexShrink: 0,
             }}
           >
-            🧰
+            <LogoMark size={28} />
           </motion.div>
         </div>
       </motion.div>
@@ -116,12 +111,12 @@ export function Home({ catalog, favorites, onOpen, onStar }: Props): React.React
             insetInlineStart: 14,
             top: '50%',
             transform: 'translateY(-50%)',
-            fontSize: 16,
-            opacity: 0.6,
+            color: 'var(--text-3)',
             pointerEvents: 'none',
+            display: 'grid',
           }}
         >
-          🔍
+          <Icon name="search" size={17} />
         </span>
         {query && (
           <Press
@@ -141,10 +136,12 @@ export function Home({ catalog, favorites, onOpen, onStar }: Props): React.React
               height: 26,
               borderRadius: 9,
               cursor: 'pointer',
-              fontSize: 13,
+              display: 'grid',
+              placeItems: 'center',
             }}
+            aria-label="پاک کردن جستجو"
           >
-            ✕
+            <Icon name="close" size={13} strokeWidth={2.2} />
           </Press>
         )}
       </motion.div>
@@ -163,10 +160,13 @@ export function Home({ catalog, favorites, onOpen, onStar }: Props): React.React
           style={{ marginBottom: 22 }}
         >
           <div className="row between" style={{ marginBottom: 10 }}>
-            <h2 className="h2">⭐ منتخب‌های شما</h2>
+            <h2 className="h2" style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+              <Icon name="star" size={17} filled style={{ color: '#fbbf24' }} />
+              منتخب‌های شما
+            </h2>
             <span className="tiny num">{faNum(starred.length)}</span>
           </div>
-          <div className="row" style={{ gap: 10, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none' }}>
+          <div className="rail">
             {starred.map((tool) => (
               <motion.button
                 key={tool.id}
@@ -175,34 +175,10 @@ export function Home({ catalog, favorites, onOpen, onStar }: Props): React.React
                   haptic.tap();
                   onOpen(tool);
                 }}
-                style={{
-                  flexShrink: 0,
-                  width: 96,
-                  padding: '14px 10px',
-                  borderRadius: 18,
-                  border: '1px solid var(--stroke)',
-                  background: 'var(--surface)',
-                  color: 'var(--text-1)',
-                  font: 'inherit',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: 7,
-                }}
+                className="shelf-card"
               >
-                <span
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 13,
-                    display: 'grid',
-                    placeItems: 'center',
-                    fontSize: 20,
-                    background: gradientFor(tool.category),
-                  }}
-                >
-                  {tool.icon}
+                <span className="badge" style={{ background: gradientFor(tool.category) }}>
+                  <Icon name={toolIcon(tool.id, tool.category)} size={20} />
                 </span>
                 <span style={{ fontSize: 11, fontWeight: 500, textAlign: 'center', lineHeight: 1.35 }}>
                   {tool.title}
@@ -230,7 +206,12 @@ export function Home({ catalog, favorites, onOpen, onStar }: Props): React.React
           className="card"
           style={{ padding: 32, textAlign: 'center' }}
         >
-          <div style={{ fontSize: 38, marginBottom: 8 }}>🔍</div>
+          <span
+            className="badge badge-lg"
+            style={{ background: 'var(--surface-hi)', color: 'var(--text-3)', margin: '0 auto 12px' }}
+          >
+            <Icon name="search" size={24} />
+          </span>
           <div className="h3">چیزی پیدا نشد</div>
           <div className="muted" style={{ marginTop: 4 }}>
             عبارت دیگری را امتحان کنید.

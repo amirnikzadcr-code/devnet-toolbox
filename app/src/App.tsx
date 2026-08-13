@@ -10,16 +10,17 @@ import { api, ApiError, type CatalogResponse, type ToolMeta } from './lib/api';
 import { boot, backButton, haptic, colorScheme, onEvent, mainButton, inTelegram, hasLaunchData } from './lib/telegram';
 import { Screen, motion } from './components/Motion';
 import { ToastHost, useToast } from './components/Bits';
+import { Icon, type IconName } from './components/Icon';
 import { Home } from './screens/Home';
 import { ToolView } from './screens/ToolView';
 import { Profile } from './screens/Profile';
 
 type Tab = 'home' | 'favorites' | 'profile';
 
-const TABS: { id: Tab; icon: string; label: string }[] = [
-  { id: 'home', icon: '🧰', label: 'ابزارها' },
-  { id: 'favorites', icon: '⭐', label: 'منتخب' },
-  { id: 'profile', icon: '👤', label: 'پروفایل' },
+const TABS: { id: Tab; icon: IconName; label: string }[] = [
+  { id: 'home', icon: 'toolbox', label: 'ابزارها' },
+  { id: 'favorites', icon: 'star', label: 'منتخب' },
+  { id: 'profile', icon: 'user', label: 'پروفایل' },
 ];
 
 export default function App(): React.ReactElement {
@@ -153,7 +154,12 @@ export default function App(): React.ReactElement {
               className="card"
               style={{ padding: 30, textAlign: 'center', maxWidth: 320 }}
             >
-              <div style={{ fontSize: 44, marginBottom: 10 }}>{inTelegram() ? '⚠️' : '📱'}</div>
+              <span
+                className="badge badge-lg"
+                style={{ background: 'var(--grad-warm)', margin: '0 auto 14px' }}
+              >
+                <Icon name={inTelegram() ? 'alert' : 'phone'} size={26} />
+              </span>
               <div className="h2">{fatal}</div>
               <div className="muted" style={{ marginTop: 8 }}>
                 {inTelegram() ? 'اگر ادامه داشت، تلگرام را ببندید و دوباره باز کنید.' : 'ربات @Toolsbotxbot را باز کنید و از منو وارد شوید.'}
@@ -218,7 +224,9 @@ export default function App(): React.ReactElement {
                     }}
                   />
                 )}
-                <span className="ico">{entry.icon}</span>
+                <span className="ico">
+                  <Icon name={entry.icon} size={21} filled={entry.id === 'favorites' && entry.id === tab} />
+                </span>
                 {entry.label}
               </button>
             ))}

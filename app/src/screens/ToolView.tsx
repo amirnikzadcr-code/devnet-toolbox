@@ -10,6 +10,7 @@ import { api, ApiError, type ToolMeta } from '../lib/api';
 import { gradientFor } from '../lib/design';
 import { haptic, mainButton } from '../lib/telegram';
 import { motion, AnimatePresence, Reveal, Press } from '../components/Motion';
+import { Icon, toolIcon } from '../components/Icon';
 
 interface Props {
   tool: ToolMeta;
@@ -125,19 +126,10 @@ export function ToolView({ tool, starred, onStar, onToast }: Props): React.React
             initial={{ scale: 0.7, rotate: -12 }}
             animate={{ scale: 1, rotate: 0 }}
             transition={{ type: 'spring', stiffness: 380, damping: 20 }}
-            style={{
-              width: 50,
-              height: 50,
-              borderRadius: 16,
-              display: 'grid',
-              placeItems: 'center',
-              fontSize: 25,
-              background: gradientFor(tool.category),
-              flexShrink: 0,
-              boxShadow: 'var(--sh-md)',
-            }}
+            className="badge badge-lg"
+            style={{ background: gradientFor(tool.category), boxShadow: 'var(--sh-md)' }}
           >
-            {tool.icon}
+            <Icon name={toolIcon(tool.id, tool.category)} size={25} />
           </motion.span>
           <div className="grow">
             <h2 className="h2">{tool.title}</h2>
@@ -154,12 +146,14 @@ export function ToolView({ tool, starred, onStar, onToast }: Props): React.React
               width: 36,
               height: 36,
               borderRadius: 12,
-              fontSize: 17,
               cursor: 'pointer',
               flexShrink: 0,
+              display: 'grid',
+              placeItems: 'center',
             }}
+            aria-label={starred ? 'حذف از منتخب‌ها' : 'افزودن به منتخب‌ها'}
           >
-            {starred ? '★' : '☆'}
+            <Icon name="star" size={17} filled={starred} />
           </Press>
         </div>
       </motion.div>
@@ -172,7 +166,9 @@ export function ToolView({ tool, starred, onStar, onToast }: Props): React.React
             style={{ padding: 16, marginBottom: 16, borderColor: 'rgba(251,191,36,0.3)' }}
           >
             <div className="row" style={{ gap: 10 }}>
-              <span style={{ fontSize: 20 }}>📎</span>
+              <span className="badge badge-sm" style={{ background: 'var(--grad-warm)' }}>
+                <Icon name="paperclip" size={16} />
+              </span>
               <div>
                 <div className="h3">این ابزار فایل می‌گیرد</div>
                 <div className="muted" style={{ marginTop: 3 }}>
@@ -212,7 +208,8 @@ export function ToolView({ tool, starred, onStar, onToast }: Props): React.React
                 setInput(tool.example);
               }}
             >
-              💡 نمونه را امتحان کن
+              <Icon name="bulb" size={13} strokeWidth={1.9} />
+              نمونه را امتحان کن
             </Press>
           )}
         </motion.div>
@@ -236,9 +233,13 @@ export function ToolView({ tool, starred, onStar, onToast }: Props): React.React
                 border: '1px solid rgba(251,113,133,0.32)',
                 color: 'var(--err)',
                 fontSize: 13.5,
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 9,
               }}
             >
-              ⚠️ {error}
+              <Icon name="alert" size={16} style={{ marginTop: 2 }} />
+              <span>{error}</span>
             </div>
           </motion.div>
         )}
@@ -271,7 +272,8 @@ export function ToolView({ tool, starred, onStar, onToast }: Props): React.React
               <div className="row" style={{ gap: 7 }}>
                 {elapsed !== null && <span className="tiny num">{elapsed}ms</span>}
                 <Press className="chip" onClick={() => void copy()}>
-                  📋 کپی
+                  <Icon name="copy" size={13} strokeWidth={1.9} />
+                  کپی
                 </Press>
               </div>
             </div>
@@ -284,8 +286,12 @@ export function ToolView({ tool, starred, onStar, onToast }: Props): React.React
 
       {/* ─── Meta ──────────────────────────────────────────────────── */}
       {tool.limitations && (
-        <div className="tiny" style={{ marginTop: 18, padding: '0 4px', lineHeight: 1.8 }}>
-          ℹ️ {tool.limitations}
+        <div
+          className="tiny"
+          style={{ marginTop: 18, padding: '0 4px', lineHeight: 1.8, display: 'flex', gap: 8 }}
+        >
+          <Icon name="info" size={14} style={{ marginTop: 3, flexShrink: 0 }} />
+          <span>{tool.limitations}</span>
         </div>
       )}
     </div>

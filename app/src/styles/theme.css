@@ -187,20 +187,39 @@ body {
 }
 
 /* ─── App shell ──────────────────────────────────────────────────────── */
+/*
+ * Height contract: shell → screen → scroll.
+ * Every link in this chain needs `min-height: 0`, otherwise a flex item's
+ * automatic minimum size (`min-height: auto`) lets it grow past its parent and
+ * the scroll container never becomes the thing that overflows.
+ */
 .shell {
   position: relative;
   z-index: 2;
   height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Animated screen wrapper — must forward the height constraint, not eat it. */
+.screen {
+  flex: 1 1 auto;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
 
 .scroll {
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
-  padding: calc(var(--safe-top) + 8px) 16px calc(var(--safe-bottom) + 96px);
+  /* Contain the momentum scroll so it never chains to the WebView itself,
+     which is what Telegram reads as a swipe-to-close gesture. */
+  overscroll-behavior-y: contain;
+  padding: calc(var(--safe-top) + 8px) 16px calc(var(--safe-bottom) + 104px);
   scrollbar-width: none;
 }
 .scroll::-webkit-scrollbar {
@@ -405,10 +424,24 @@ textarea.field {
   display: flex;
   padding: 8px 12px calc(var(--safe-bottom) + 10px);
   gap: 4px;
-  background: color-mix(in srgb, var(--bg-1) 72%, transparent);
-  backdrop-filter: blur(28px) saturate(180%);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  /* Opacity here is a legibility requirement, not a style choice: at 72% the
+     tool grid stayed readable through the bar. Blur alone does not hide it on
+     light theme, so the tint is nearly solid and a top fade masks the seam. */
+  background: color-mix(in srgb, var(--bg-1) 94%, transparent);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
   border-top: 1px solid var(--stroke);
+}
+/* Soft gradient above the bar so content dissolves instead of being cut. */
+.tabbar::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: 28px;
+  background: linear-gradient(to top, var(--bg-1), transparent);
+  pointer-events: none;
 }
 .tabbar button {
   flex: 1;
@@ -433,12 +466,15 @@ textarea.field {
   color: var(--text-1);
 }
 .tabbar .ico {
-  font-size: 21px;
-  line-height: 1;
-  transition: transform 0.3s var(--ease-spring);
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  transition: transform 0.3s var(--ease-spring), color 0.22s;
 }
 .tabbar button[data-on='1'] .ico {
-  transform: translateY(-2px) scale(1.14);
+  transform: translateY(-1px);
+  color: var(--brand-1);
 }
 
 /* ─── Tool grid ──────────────────────────────────────────────────────── */
@@ -460,47 +496,192 @@ textarea.field {
 
 .tile {
   position: relative;
-  padding: 15px 14px;
+  padding: 14px;
   border-radius: var(--r-md);
   background: var(--surface);
   border: 1px solid var(--stroke);
   cursor: pointer;
   overflow: hidden;
-  min-height: 112px;
+  min-height: 132px;
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 9px;
   text-align: start;
-  transition: border-color 0.24s, background 0.24s;
+  isolation: isolate;
+  transition: border-color 0.24s, background 0.24s, box-shadow 0.28s var(--ease-out);
 }
 .tile:hover {
   border-color: var(--stroke-hi);
+  background: var(--surface-hi);
+}
+.tile:active {
+  box-shadow: var(--sh-md);
 }
 /* Tinted aura keyed to the tool's category. */
 .tile .aura {
   position: absolute;
-  width: 96px;
-  height: 96px;
+  width: 104px;
+  height: 104px;
   border-radius: 50%;
   filter: blur(34px);
-  opacity: 0.5;
-  top: -32px;
-  inset-inline-end: -26px;
+  opacity: 0.42;
+  top: -36px;
+  inset-inline-end: -28px;
   transition: opacity 0.3s, transform 0.5s var(--ease-out);
   pointer-events: none;
+  z-index: -1;
 }
 .tile:active .aura {
-  opacity: 0.85;
+  opacity: 0.8;
   transform: scale(1.25);
 }
-.tile .emoji {
-  font-size: 25px;
-  line-height: 1;
+
+/* Icon badge — the tile's graphic anchor. Gradient plate + vector glyph. */
+.badge {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--sh-sm);
+  transition: transform 0.34s var(--ease-spring);
 }
+/* Top-edge specular so the plate reads as a raised object, not a flat square. */
+.badge::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.34), transparent 58%);
+  pointer-events: none;
+}
+.badge > svg {
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.28));
+}
+.tile:active .badge {
+  transform: scale(0.92) rotate(-4deg);
+}
+.badge-sm {
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+}
+.badge-lg {
+  width: 52px;
+  height: 52px;
+  border-radius: 17px;
+}
+
 .tile .name {
   font-size: 13.5px;
   font-weight: 500;
-  line-height: 1.4;
+  line-height: 1.45;
+}
+
+/* Capability pill at the tile's foot: offline / online / file. */
+.flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: auto;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 500;
+  background: var(--surface-hi);
+  border: 1px solid var(--stroke);
+  color: var(--text-3);
+  align-self: flex-start;
+}
+.flag[data-kind='net'] {
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.28);
+  background: rgba(56, 189, 248, 0.1);
+}
+.flag[data-kind='file'] {
+  color: var(--warn);
+  border-color: rgba(251, 191, 36, 0.28);
+  background: rgba(251, 191, 36, 0.1);
+}
+.flag[data-kind='fast'] {
+  color: var(--ok);
+  border-color: rgba(52, 211, 153, 0.26);
+  background: rgba(52, 211, 153, 0.09);
+}
+
+/* Star toggle pinned to the tile corner. */
+.star-btn {
+  position: absolute;
+  top: 9px;
+  inset-inline-end: 9px;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, transform 0.24s var(--ease-spring);
+  z-index: 2;
+}
+.star-btn[data-on='1'] {
+  background: rgba(251, 191, 36, 0.16);
+  color: #fbbf24;
+}
+.star-btn:active {
+  transform: scale(0.86);
+}
+
+/*
+ * Horizontal rails (favourites shelf, category chips).
+ * They bleed to both screen edges by cancelling the scroll container's
+ * padding, then re-adding it as scroll padding — otherwise the last card is
+ * clipped mid-tile and looks like a rendering fault rather than "more here".
+ */
+.rail {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin-inline: -16px;
+  padding-inline: 16px;
+  padding-bottom: 4px;
+  scroll-snap-type: x proximity;
+}
+.rail::-webkit-scrollbar {
+  display: none;
+}
+.rail > * {
+  scroll-snap-align: start;
+}
+
+/* Horizontal shelf card (favourites rail). */
+.shelf-card {
+  flex-shrink: 0;
+  width: 100px;
+  padding: 13px 10px;
+  border-radius: 18px;
+  border: 1px solid var(--stroke);
+  background: var(--surface);
+  color: var(--text-1);
+  font: inherit;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  transition: border-color 0.22s, background 0.22s;
+}
+.shelf-card:active {
+  background: var(--surface-hi);
 }
 
 /* ─── Skeleton ───────────────────────────────────────────────────────── */
