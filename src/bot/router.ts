@@ -2,7 +2,7 @@ import type { Env, ExecCtxLike } from '../types/env.js';
 import type { TgCallbackQuery, TgMessage, TgUpdate, TgUser } from '../types/telegram.js';
 import type { BotContext } from './context.js';
 import type { Screen } from './screens.js';
-import type { ToolCategory } from '../tools/types.js';
+import type { ToolCategory, ToolDefinition } from '../tools/types.js';
 import type { ScanType } from '../security/types.js';
 import { backgroundRunner, createTelegram } from './context.js';
 import { isLang, t, type Lang } from '../localization/index.js';
@@ -247,7 +247,7 @@ async function runSecurityScanFlow(ctx: BotContext, kind: ScanType, message: TgM
  * first and is edited in place with the result — one message per run, never a
  * burst of consecutive ones.
  */
-async function runFileToolFlow(ctx: BotContext, tool: ReturnType<typeof getTool> & object, message: TgMessage): Promise<void> {
+async function runFileToolFlow(ctx: BotContext, tool: ToolDefinition, message: TgMessage): Promise<void> {
   const loading = await ctx.tg.sendMessage(ctx.chatId, t(ctx.lang, 'tool_file_downloading'));
   const loadingId = loading.result?.message_id;
 
